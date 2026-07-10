@@ -1,0 +1,133 @@
+.home-page {
+  padding: 0;
+}
+
+.hero {
+  text-align: center;
+  padding: 5rem 2rem 4rem;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+  color: #fff;
+}
+
+.hero-title {
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: #e2b96f;
+  margin-bottom: 1rem;
+}
+
+.hero-subtitle {
+  font-size: 1.15rem;
+  color: #ccc;
+  max-width: 550px;
+  margin: 0 auto 2rem;
+  line-height: 1.8;
+}
+
+.cta-button {
+  display: inline-block;
+  background-color: #e2b96f;
+  color: #1a1a2e;
+  padding: 0.75rem 2rem;
+  border-radius: 25px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(226, 185, 111, 0.4);
+}
+
+.features {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 3rem 2rem;
+  flex-wrap: wrap;
+  background-color: #f9f7f4;
+}
+
+.feature-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 2rem 1.5rem;
+  width: 220px;
+  text-align: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+  transition: transform 0.2s;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+}
+
+.feature-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.feature-card h3 {
+  font-size: 1rem;
+  color: #1a1a2e;
+  margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+  font-size: 0.875rem;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* API status bar */
+.api-status-bar {
+  margin-top: 1.75rem;
+  display: flex;
+  justify-content: center;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 1.1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-loading {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ccc;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.status-ok {
+  background-color: rgba(52, 211, 153, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.status-error {
+  background-color: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: rushd_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-db_rushd}
+      POSTGRES_USER: ${DB_USER:-rushd_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-rushd_password}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
