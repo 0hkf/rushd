@@ -63,8 +63,11 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             Map<String, Object> body = new LinkedHashMap<>();
+                            body.put("timestamp", java.time.Instant.now().toString());
                             body.put("status", HttpStatus.UNAUTHORIZED.value());
+                            body.put("error", "Unauthorized");
                             body.put("message", "Authentication is required");
+                            body.put("path", request.getRequestURI());
 
                             response.setStatus(HttpStatus.UNAUTHORIZED.value());
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -78,4 +81,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-

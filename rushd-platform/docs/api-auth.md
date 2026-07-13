@@ -67,6 +67,37 @@ http://localhost:8080
 
 ---
 
+## صيغة الأخطاء الموحّدة
+
+جميع أخطاء الـ API تُعيد JSON بهذا الشكل:
+
+```json
+{
+  "timestamp": "2026-07-13T08:00:00Z",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "...",
+  "path": "/api/auth/register"
+}
+```
+
+أخطاء الـ validation (400) تُعيد `message` كـ object يحتوي الحقول:
+
+```json
+{
+  "timestamp": "2026-07-13T08:00:00Z",
+  "status": 400,
+  "error": "Bad Request",
+  "message": {
+    "name": "الاسم مطلوب",
+    "email": "صيغة البريد الإلكتروني غير صحيحة"
+  },
+  "path": "/api/auth/register"
+}
+```
+
+---
+
 ## POST /api/auth/register
 
 ### الوصف
@@ -108,7 +139,11 @@ http://localhost:8080
 
 ```json
 {
-  "message": "البريد الإلكتروني مستخدم بالفعل"
+  "timestamp": "2026-07-13T08:00:00Z",
+  "status": 409,
+  "error": "Conflict",
+  "message": "البريد الإلكتروني مستخدم بالفعل: buyer@rushd.local",
+  "path": "/api/auth/register"
 }
 ```
 
@@ -116,9 +151,15 @@ http://localhost:8080
 
 ```json
 {
-  "name": "الاسم مطلوب",
-  "email": "صيغة البريد الإلكتروني غير صحيحة",
-  "password": "كلمة المرور يجب أن تكون 6 أحرف على الأقل"
+  "timestamp": "2026-07-13T08:00:00Z",
+  "status": 400,
+  "error": "Bad Request",
+  "message": {
+    "name": "الاسم مطلوب",
+    "email": "صيغة البريد الإلكتروني غير صحيحة",
+    "password": "كلمة المرور يجب أن تكون 6 أحرف على الأقل"
+  },
+  "path": "/api/auth/register"
 }
 ```
 
@@ -268,7 +309,11 @@ curl -s -X POST http://localhost:8080/api/auth/register \
 
 ```json
 {
-  "message": "Invalid email or password"
+  "timestamp": "2026-07-13T08:00:00Z",
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Invalid email or password",
+  "path": "/api/auth/login"
 }
 ```
 
@@ -338,8 +383,11 @@ Authorization: Bearer <token>
 
 ```json
 {
+  "timestamp": "2026-07-13T08:00:00Z",
   "status": 401,
-  "message": "Authentication is required"
+  "error": "Unauthorized",
+  "message": "Authentication is required",
+  "path": "/api/auth/me"
 }
 ```
 

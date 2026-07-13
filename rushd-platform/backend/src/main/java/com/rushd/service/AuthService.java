@@ -1,15 +1,16 @@
 package com.rushd.service;
 
-import com.rushd.dto.RegisterRequest;
-import com.rushd.dto.UserResponse;
 import com.rushd.dto.AuthResponse;
 import com.rushd.dto.LoginRequest;
+import com.rushd.dto.RegisterRequest;
+import com.rushd.dto.UserResponse;
 import com.rushd.entity.User;
+import com.rushd.exception.EmailAlreadyExistsException;
+import com.rushd.exception.InvalidCredentialsException;
+import com.rushd.exception.UserNotFoundException;
 import com.rushd.repository.UserRepository;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 
 @Service
 public class AuthService {
@@ -18,7 +19,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -27,7 +30,7 @@ public class AuthService {
     public UserResponse register(RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new IllegalArgumentException("البريد الإلكتروني مستخدم بالفعل");
+            throw new EmailAlreadyExistsException(normalizedEmail);
         }
 
         User user = new User();
@@ -36,28 +39,25 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
 
-        User saved = userRepository.save(user);
-        return UserResponse.from(saved);
+        return UserResponse.from(userRepository.save(user));
     }
 
-    public AuthResponse login(com.rushd.dto.LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Invalid email or password"));
+                .orElseThrow(InvalidCredentialsException::new);
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new org.springframework.security.authentication.BadCredentialsException("Invalid email or password");
+            throw new InvalidCredentialsException();
         }
 
         String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
-        UserResponse userResponse = UserResponse.from(user);
-
-        return new AuthResponse(token, jwtService.getExpirationTime(), userResponse);
+        return new AuthResponse(token, jwtService.getExpirationTime(), UserResponse.from(user));
     }
 
     public UserResponse me(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+                .orElseThrow(() -> new UserNotFoundException(email));
         return UserResponse.from(user);
     }
 }

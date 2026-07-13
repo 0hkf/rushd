@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -45,7 +46,7 @@ class JwtAuthenticationFilterTest {
     private User buildUser() {
         User u = new User();
         u.setEmail("test@rushd.com");
-        u.setPassword("$2a$10$irrelevant-hash"); // not used in filter path
+        u.setPassword("$2a$10$irrelevant-hash");
         u.setName("Test User");
         u.setRole(Role.BUYER);
         return u;
@@ -61,7 +62,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void registerEndpointIsPublic() throws Exception {
-        // Sending an intentionally invalid body; we expect 400 (validation), not 401
+        // Empty body → 400 validation, NOT 401
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
@@ -70,7 +71,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void loginEndpointIsPublic() throws Exception {
-        // Sending an intentionally invalid body; we expect 400 (validation), not 401
+        // Empty body → 400 validation, NOT 401
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
@@ -84,7 +85,39 @@ class JwtAuthenticationFilterTest {
     }
 
     // -------------------------------------------------------------------------
-    // Protected endpoint: no token → 401
+    // Register — validation returns 400 with field errors
+    // -------------------------------------------------------------------------
+
+    @Test
+    void registerWithInvalidBodyReturns400WithFieldErrors() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").isMap());
+    }
+
+    // -------------------------------------------------------------------------
+    // Register — duplicate email returns 409
+    // -------------------------------------------------------------------------
+
+    @Test
+    void duplicateEmailReturns409() throws Exception {
+        when(userRepository.existsByEmail("buyer@rushd.local")).thenReturn(true);
+
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Buyer\",\"email\":\"buyer@rushd.local\",\"password\":\"Buyer123\",\"role\":\"BUYER\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"))
+                .andExpect(jsonPath("$.message").isString());
+    }
+
+    // -------------------------------------------------------------------------
+    // Protected endpoint: no token → 401 with standardized body
     // -------------------------------------------------------------------------
 
     @Test
@@ -92,7 +125,10 @@ class JwtAuthenticationFilterTest {
         mockMvc.perform(get("/api/protected-example"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.message").value("Authentication is required"));
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("Authentication is required"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.path").value("/api/protected-example"));
     }
 
     // -------------------------------------------------------------------------
@@ -115,12 +151,8 @@ class JwtAuthenticationFilterTest {
         when(userRepository.findByEmail("test@rushd.com"))
                 .thenReturn(Optional.of(buildUser()));
 
-        String token = validToken();
-
-        // Any protected URL — 404 is fine, it means auth passed and the route just
-        // doesn't exist
         mockMvc.perform(get("/api/protected-example")
-                .header("Authorization", "Bearer " + token))
+                .header("Authorization", "Bearer " + validToken()))
                 .andExpect(status().isNotFound());
     }
 
@@ -148,7 +180,7 @@ class JwtAuthenticationFilterTest {
     }
 
     // -------------------------------------------------------------------------
-    // GET /api/auth/me — valid token → 200 with user body, no password field
+    // GET /api/auth/me — valid token → 200, no password field
     // -------------------------------------------------------------------------
 
     @Test
@@ -156,15 +188,13 @@ class JwtAuthenticationFilterTest {
         when(userRepository.findByEmail("test@rushd.com"))
                 .thenReturn(Optional.of(buildUser()));
 
-        String token = validToken();
-
         mockMvc.perform(get("/api/auth/me")
-                .header("Authorization", "Bearer " + token))
+                .header("Authorization", "Bearer " + validToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("test@rushd.com"))
                 .andExpect(jsonPath("$.name").value("Test User"))
                 .andExpect(jsonPath("$.role").value("BUYER"))
-                // password MUST NOT appear in response
+                // password MUST NOT appear in any response
                 .andExpect(jsonPath("$.password").doesNotExist());
     }
 
@@ -175,8 +205,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void extractUsernameReturnsCorrectEmail() {
         String token = jwtService.generateToken("user@example.com", "SELLER");
-        String username = jwtService.extractUsername(token);
-        assert "user@example.com".equals(username);
+        assert "user@example.com".equals(jwtService.extractUsername(token));
     }
 
     @Test
