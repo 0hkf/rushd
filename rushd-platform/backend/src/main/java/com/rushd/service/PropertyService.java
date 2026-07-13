@@ -5,16 +5,22 @@ import com.rushd.dto.PropertyResponse;
 import com.rushd.entity.Property;
 import com.rushd.entity.PropertyFacade;
 import com.rushd.entity.PropertyStatus;
+import com.rushd.entity.PropertyType;
 import com.rushd.entity.Role;
 import com.rushd.entity.User;
+import com.rushd.exception.InvalidPropertyQueryException;
 import com.rushd.exception.UserNotFoundException;
 import com.rushd.mapper.PropertyMapper;
 import com.rushd.repository.PropertyRepository;
 import com.rushd.repository.UserRepository;
+import com.rushd.repository.specification.PropertySpecification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Locale;
 
 @Service
@@ -59,5 +65,34 @@ public class PropertyService {
                 : request.getStatus());
 
         return PropertyMapper.toResponse(propertyRepository.save(property));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PropertyResponse> listProperties(
+            String city,
+            String district,
+            PropertyType type,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Pageable pageable) {
+        validatePriceRange(minPrice, maxPrice);
+
+        return propertyRepository.findAll(
+                        PropertySpecification.activeProperties(
+                                city, district, type, minPrice, maxPrice),
+                        pageable)
+                .map(PropertyMapper::toResponse);
+    }
+
+    private void validatePriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
+        if (minPrice != null && minPrice.signum() < 0) {
+            throw new InvalidPropertyQueryException("minPrice cannot be negative");
+        }
+        if (maxPrice != null && maxPrice.signum() < 0) {
+            throw new InvalidPropertyQueryException("maxPrice cannot be negative");
+        }
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            throw new InvalidPropertyQueryException("minPrice cannot be greater than maxPrice");
+        }
     }
 }

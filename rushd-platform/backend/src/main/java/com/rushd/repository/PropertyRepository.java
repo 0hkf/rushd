@@ -3,10 +3,11 @@ package com.rushd.repository;
 import com.rushd.entity.Property;
 import com.rushd.entity.PropertyStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 
-public interface PropertyRepository extends JpaRepository<Property, Long> {
+public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSpecificationExecutor<Property> {
 
     List<Property> findBySellerId(Long sellerId);
 

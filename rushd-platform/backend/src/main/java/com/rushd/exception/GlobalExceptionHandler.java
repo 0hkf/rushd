@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -49,6 +50,28 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponse(400, "Bad Request", message, request.getRequestURI()));
+    }
+
+    // -------------------------------------------------------------------------
+    // 400 — Invalid query parameter type or value
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponse(400, "Bad Request",
+                        "Invalid value for parameter: " + ex.getName(),
+                        request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvalidPropertyQueryException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPropertyQuery(
+            InvalidPropertyQueryException ex, HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponse(400, "Bad Request", ex.getMessage(), request.getRequestURI()));
     }
 
     // -------------------------------------------------------------------------
