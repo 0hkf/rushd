@@ -20,7 +20,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Integration-level tests for the JWT authentication filter and security configuration.
+ * Integration-level tests for the JWT authentication filter and security
+ * configuration.
  *
  * Uses a mocked UserRepository so no real database is required.
  */
@@ -62,8 +63,8 @@ class JwtAuthenticationFilterTest {
     void registerEndpointIsPublic() throws Exception {
         // Sending an intentionally invalid body; we expect 400 (validation), not 401
         mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -71,8 +72,8 @@ class JwtAuthenticationFilterTest {
     void loginEndpointIsPublic() throws Exception {
         // Sending an intentionally invalid body; we expect 400 (validation), not 401
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -101,13 +102,12 @@ class JwtAuthenticationFilterTest {
     @Test
     void invalidTokenReturns401() throws Exception {
         mockMvc.perform(get("/api/protected-example")
-                        .header("Authorization", "Bearer this.is.not.a.valid.jwt"))
+                .header("Authorization", "Bearer this.is.not.a.valid.jwt"))
                 .andExpect(status().isUnauthorized());
     }
 
     // -------------------------------------------------------------------------
-    // Protected endpoint: valid token → 200 (or whatever the controller returns)
-    //   — we just check it is NOT 401
+    // Protected endpoint: valid token → 404 (route doesn't exist, but NOT 401)
     // -------------------------------------------------------------------------
 
     @Test
@@ -117,10 +117,55 @@ class JwtAuthenticationFilterTest {
 
         String token = validToken();
 
-        // Any protected URL — 404 is fine, it means auth passed and the route just doesn't exist
+        // Any protected URL — 404 is fine, it means auth passed and the route just
+        // doesn't exist
         mockMvc.perform(get("/api/protected-example")
-                        .header("Authorization", "Bearer " + token))
+                .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/auth/me — no token → 401
+    // -------------------------------------------------------------------------
+
+    @Test
+    void meWithoutTokenReturns401() throws Exception {
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.message").value("Authentication is required"));
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/auth/me — invalid token → 401
+    // -------------------------------------------------------------------------
+
+    @Test
+    void meWithInvalidTokenReturns401() throws Exception {
+        mockMvc.perform(get("/api/auth/me")
+                .header("Authorization", "Bearer bad.token.value"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/auth/me — valid token → 200 with user body, no password field
+    // -------------------------------------------------------------------------
+
+    @Test
+    void meWithValidTokenReturns200() throws Exception {
+        when(userRepository.findByEmail("test@rushd.com"))
+                .thenReturn(Optional.of(buildUser()));
+
+        String token = validToken();
+
+        mockMvc.perform(get("/api/auth/me")
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("test@rushd.com"))
+                .andExpect(jsonPath("$.name").value("Test User"))
+                .andExpect(jsonPath("$.role").value("BUYER"))
+                // password MUST NOT appear in response
+                .andExpect(jsonPath("$.password").doesNotExist());
     }
 
     // -------------------------------------------------------------------------

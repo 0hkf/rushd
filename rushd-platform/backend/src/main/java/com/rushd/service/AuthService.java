@@ -6,6 +6,7 @@ import com.rushd.dto.AuthResponse;
 import com.rushd.dto.LoginRequest;
 import com.rushd.entity.User;
 import com.rushd.repository.UserRepository;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -52,5 +53,11 @@ public class AuthService {
         UserResponse userResponse = UserResponse.from(user);
 
         return new AuthResponse(token, jwtService.getExpirationTime(), userResponse);
+    }
+
+    public UserResponse me(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+        return UserResponse.from(user);
     }
 }
