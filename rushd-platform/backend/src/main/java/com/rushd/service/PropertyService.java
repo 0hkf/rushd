@@ -9,6 +9,7 @@ import com.rushd.entity.PropertyType;
 import com.rushd.entity.Role;
 import com.rushd.entity.User;
 import com.rushd.exception.InvalidPropertyQueryException;
+import com.rushd.exception.PropertyNotFoundException;
 import com.rushd.exception.UserNotFoundException;
 import com.rushd.mapper.PropertyMapper;
 import com.rushd.repository.PropertyRepository;
@@ -82,6 +83,36 @@ public class PropertyService {
                                 city, district, type, minPrice, maxPrice),
                         pageable)
                 .map(PropertyMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public PropertyResponse getProperty(Long id, String authenticatedEmail) {
+        Property property = propertyRepository.findById(id)
+                .orElseThrow(() -> new PropertyNotFoundException(id));
+
+        if (!isPubliclyVisible(property) && !canViewPrivateProperty(property, authenticatedEmail)) {
+            throw new PropertyNotFoundException(id);
+        }
+
+        return PropertyMapper.toDetailsResponse(property);
+    }
+
+    private boolean isPubliclyVisible(Property property) {
+        return property.getStatus() == PropertyStatus.ACTIVE
+                || property.getStatus() == PropertyStatus.SOLD;
+    }
+
+    private boolean canViewPrivateProperty(Property property, String authenticatedEmail) {
+        if (authenticatedEmail == null || authenticatedEmail.isBlank()) {
+            return false;
+        }
+
+        String normalizedEmail = authenticatedEmail.trim().toLowerCase(Locale.ROOT);
+        return userRepository.findByEmail(normalizedEmail)
+                .map(user -> user.getRole() == Role.ADMIN
+                        || (user.getRole() == Role.SELLER
+                        && user.getId().equals(property.getSeller().getId())))
+                .orElse(false);
     }
 
     private void validatePriceRange(BigDecimal minPrice, BigDecimal maxPrice) {

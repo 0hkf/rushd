@@ -118,6 +118,14 @@ public class GlobalExceptionHandler {
                 new ErrorResponse(404, "Not Found", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(PropertyNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePropertyNotFound(
+            PropertyNotFoundException ex, HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponse(404, "Not Found", ex.getMessage(), request.getRequestURI()));
+    }
+
     // UsernameNotFoundException from Spring Security (e.g. CustomUserDetailsService)
     // should not leak internals — return 401 to avoid user enumeration
     @ExceptionHandler(UsernameNotFoundException.class)

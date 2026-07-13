@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,6 +55,14 @@ public class PropertyController {
         Page<PropertyResponse> properties = propertyService.listProperties(
                 city, district, type, minPrice, maxPrice, pageable);
         return ResponseEntity.ok(PageResponse.from(properties));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PropertyResponse> getProperty(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String authenticatedEmail = authentication == null ? null : authentication.getName();
+        return ResponseEntity.ok(propertyService.getProperty(id, authenticatedEmail));
     }
 
     @PostMapping

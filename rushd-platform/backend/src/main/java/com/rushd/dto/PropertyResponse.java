@@ -1,5 +1,6 @@
 package com.rushd.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.rushd.entity.PropertyFacade;
 import com.rushd.entity.PropertyPurpose;
 import com.rushd.entity.PropertyStatus;
@@ -11,6 +12,8 @@ import java.time.LocalDateTime;
 public class PropertyResponse {
 
     private final Long id;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final SellerSummaryResponse seller;
     private final Long sellerId;
     private final String sellerName;
     private final String title;
@@ -43,7 +46,29 @@ public class PropertyResponse {
                             PropertyStatus status,
                             LocalDateTime createdAt,
                             LocalDateTime updatedAt) {
+        this(id, null, sellerId, sellerName, title, type, city, district, area, price,
+                streetWidth, facade, purpose, description, status, createdAt, updatedAt);
+    }
+
+    public PropertyResponse(Long id,
+                            SellerSummaryResponse seller,
+                            Long sellerId,
+                            String sellerName,
+                            String title,
+                            PropertyType type,
+                            String city,
+                            String district,
+                            BigDecimal area,
+                            BigDecimal price,
+                            BigDecimal streetWidth,
+                            PropertyFacade facade,
+                            PropertyPurpose purpose,
+                            String description,
+                            PropertyStatus status,
+                            LocalDateTime createdAt,
+                            LocalDateTime updatedAt) {
         this.id = id;
+        this.seller = seller;
         this.sellerId = sellerId;
         this.sellerName = sellerName;
         this.title = title;
@@ -63,6 +88,10 @@ public class PropertyResponse {
 
     public Long getId() {
         return id;
+    }
+
+    public SellerSummaryResponse getSeller() {
+        return seller;
     }
 
     public Long getSellerId() {
