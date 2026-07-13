@@ -1,5 +1,7 @@
 package com.rushd.controller;
 
+import com.rushd.dto.LoginRequest;
+import com.rushd.dto.AuthResponse;
 import com.rushd.dto.RegisterRequest;
 import com.rushd.dto.UserResponse;
 import com.rushd.service.AuthService;
@@ -22,5 +24,11 @@ public class AuthController {
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
         UserResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
     }
 }
