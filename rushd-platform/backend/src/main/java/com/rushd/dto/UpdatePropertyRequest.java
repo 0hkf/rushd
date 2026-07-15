@@ -1,118 +1,73 @@
-package com.rushd.entity;
+package com.rushd.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import com.rushd.entity.PropertyFacade;
+import com.rushd.entity.PropertyPurpose;
+import com.rushd.entity.PropertyStatus;
+import com.rushd.entity.PropertyType;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
-@Entity
-@Table(
-        name = "properties",
-        indexes = {
-                @Index(name = "idx_properties_seller_id", columnList = "seller_id"),
-                @Index(name = "idx_properties_status", columnList = "status"),
-                @Index(name = "idx_properties_city", columnList = "city"),
-                @Index(name = "idx_properties_district", columnList = "district"),
-                @Index(name = "idx_properties_google_place_id", columnList = "google_place_id")
-        }
-)
-public class Property {
+public class UpdatePropertyRequest {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seller_id", nullable = false)
-    private User seller;
-
-    @Column(nullable = false)
+    @NotBlank(message = "العنوان مطلوب")
+    @Size(max = 150, message = "العنوان يجب ألا يتجاوز 150 حرفاً")
     private String title;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @NotNull(message = "نوع العقار مطلوب")
     private PropertyType type;
 
-    @Column(nullable = false)
+    @NotBlank(message = "المدينة مطلوبة")
+    @Size(max = 100, message = "المدينة يجب ألا تتجاوز 100 حرف")
     private String city;
 
-    @Column(nullable = false)
+    @NotBlank(message = "الحي مطلوب")
+    @Size(max = 100, message = "الحي يجب ألا يتجاوز 100 حرف")
     private String district;
 
-    @Column(name = "google_place_id", length = 255)
+    @Size(max = 255, message = "معرّف موقع Google يجب ألا يتجاوز 255 حرفاً")
     private String googlePlaceId;
 
-    @Column(name = "formatted_address", length = 500)
+    @Size(max = 500, message = "العنوان المنسق يجب ألا يتجاوز 500 حرف")
     private String formattedAddress;
 
-    @Column(length = 150)
+    @Size(max = 150, message = "اسم الحي يجب ألا يتجاوز 150 حرفاً")
     private String neighborhood;
 
-    @Column(precision = 10, scale = 7)
+    @DecimalMin(value = "-90", message = "خط العرض يجب ألا يقل عن -90")
+    @DecimalMax(value = "90", message = "خط العرض يجب ألا يزيد عن 90")
     private BigDecimal latitude;
 
-    @Column(precision = 10, scale = 7)
+    @DecimalMin(value = "-180", message = "خط الطول يجب ألا يقل عن -180")
+    @DecimalMax(value = "180", message = "خط الطول يجب ألا يزيد عن 180")
     private BigDecimal longitude;
 
-    @Column(nullable = false, precision = 12, scale = 2)
+    @NotNull(message = "المساحة مطلوبة")
+    @Positive(message = "المساحة يجب أن تكون أكبر من صفر")
     private BigDecimal area;
 
-    @Column(nullable = false, precision = 19, scale = 2)
+    @NotNull(message = "السعر مطلوب")
+    @Positive(message = "السعر يجب أن يكون أكبر من صفر")
     private BigDecimal price;
 
-    @Column(name = "street_width", precision = 10, scale = 2)
+    @Positive(message = "عرض الشارع يجب أن يكون أكبر من صفر")
     private BigDecimal streetWidth;
 
-    @Enumerated(EnumType.STRING)
-    private PropertyFacade facade = PropertyFacade.UNKNOWN;
+    private PropertyFacade facade;
 
-    @Enumerated(EnumType.STRING)
+    @NotNull(message = "غرض العقار مطلوب")
     private PropertyPurpose purpose;
 
-    @Column(columnDefinition = "TEXT")
+    @Size(max = 3000, message = "الوصف يجب ألا يتجاوز 3000 حرف")
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PropertyStatus status = PropertyStatus.ACTIVE;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        if (this.status == null) {
-            this.status = PropertyStatus.ACTIVE;
-        }
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public User getSeller() {
-        return seller;
-    }
-
-    public void setSeller(User seller) {
-        this.seller = seller;
-    }
+    @NotNull(message = "حالة العقار مطلوبة")
+    private PropertyStatus status;
 
     public String getTitle() {
         return title;
@@ -240,13 +195,5 @@ public class Property {
 
     public void setStatus(PropertyStatus status) {
         this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
     }
 }

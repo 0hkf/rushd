@@ -64,6 +64,13 @@ class PropertyDetailsControllerTest {
 
     @Test
     void existingActivePropertyReturns200() throws Exception {
+        activeProperty.setGooglePlaceId("ChIJDetailsPlace123");
+        activeProperty.setFormattedAddress("حي الياسمين، الرياض، السعودية");
+        activeProperty.setNeighborhood("حي الياسمين");
+        activeProperty.setLatitude(new BigDecimal("24.7136000"));
+        activeProperty.setLongitude(new BigDecimal("46.6753000"));
+        propertyRepository.saveAndFlush(activeProperty);
+
         getAs(activeProperty.getId(), otherSeller)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(activeProperty.getId()))
@@ -74,6 +81,11 @@ class PropertyDetailsControllerTest {
                 .andExpect(jsonPath("$.type").value("VILLA"))
                 .andExpect(jsonPath("$.city").value("Riyadh"))
                 .andExpect(jsonPath("$.district").value("Al Narjis"))
+                .andExpect(jsonPath("$.googlePlaceId").value("ChIJDetailsPlace123"))
+                .andExpect(jsonPath("$.formattedAddress").value("حي الياسمين، الرياض، السعودية"))
+                .andExpect(jsonPath("$.neighborhood").value("حي الياسمين"))
+                .andExpect(jsonPath("$.latitude").value(24.7136))
+                .andExpect(jsonPath("$.longitude").value(46.6753))
                 .andExpect(jsonPath("$.area").value(500))
                 .andExpect(jsonPath("$.price").value(1500000))
                 .andExpect(jsonPath("$.streetWidth").value(20))

@@ -8,6 +8,8 @@ import com.rushd.repository.UserRepository;
 import com.rushd.service.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -20,6 +22,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -65,8 +68,62 @@ class PropertyControllerTest {
                 .andExpect(jsonPath("$.title").value("Residential Land in Riyadh"))
                 .andExpect(jsonPath("$.facade").value("UNKNOWN"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.googlePlaceId").value((Object) null))
+                .andExpect(jsonPath("$.formattedAddress").value((Object) null))
+                .andExpect(jsonPath("$.neighborhood").value((Object) null))
+                .andExpect(jsonPath("$.latitude").value((Object) null))
+                .andExpect(jsonPath("$.longitude").value((Object) null))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.seller").doesNotExist());
+
+        ArgumentCaptor<Property> propertyCaptor = ArgumentCaptor.forClass(Property.class);
+        verify(propertyRepository).save(propertyCaptor.capture());
+        assertNull(propertyCaptor.getValue().getGooglePlaceId());
+        assertNull(propertyCaptor.getValue().getFormattedAddress());
+        assertNull(propertyCaptor.getValue().getNeighborhood());
+        assertNull(propertyCaptor.getValue().getLatitude());
+        assertNull(propertyCaptor.getValue().getLongitude());
+    }
+
+    @Test
+    void sellerCreatesPropertyWithStructuredLocation() throws Exception {
+        User seller = buildUser(7L, "seller@rushd.com", "Rushd Seller", Role.SELLER);
+
+        performAs(seller, requestWithLocation("24.7136000", "46.6753000"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.googlePlaceId").value("ChIJRushdPlace123"))
+                .andExpect(jsonPath("$.formattedAddress").value("حي الياسمين، الرياض، السعودية"))
+                .andExpect(jsonPath("$.neighborhood").value("حي الياسمين"))
+                .andExpect(jsonPath("$.latitude").value(24.7136))
+                .andExpect(jsonPath("$.longitude").value(46.6753));
+
+        ArgumentCaptor<Property> propertyCaptor = ArgumentCaptor.forClass(Property.class);
+        verify(propertyRepository).save(propertyCaptor.capture());
+        Property savedProperty = propertyCaptor.getValue();
+        assertEquals("ChIJRushdPlace123", savedProperty.getGooglePlaceId());
+        assertEquals("حي الياسمين، الرياض، السعودية", savedProperty.getFormattedAddress());
+        assertEquals("حي الياسمين", savedProperty.getNeighborhood());
+        assertEquals(0, new java.math.BigDecimal("24.7136000").compareTo(savedProperty.getLatitude()));
+        assertEquals(0, new java.math.BigDecimal("46.6753000").compareTo(savedProperty.getLongitude()));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "91, 46.6753, latitude",
+            "-91, 46.6753, latitude",
+            "24.7136, 181, longitude",
+            "24.7136, -181, longitude"
+    })
+    void invalidCoordinatesReturn400(String latitude,
+                                     String longitude,
+                                     String invalidField) throws Exception {
+        User seller = buildUser(7L, "seller@rushd.com", "Rushd Seller", Role.SELLER);
+
+        performAs(seller, requestWithLocation(latitude, longitude))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message." + invalidField).exists());
+
+        verify(propertyRepository, never()).save(any(Property.class));
     }
 
     @Test
@@ -191,5 +248,26 @@ class PropertyControllerTest {
                   "description": "Corner residential land"
                 }
                 """;
+    }
+
+    private String requestWithLocation(String latitude, String longitude) {
+        return """
+                {
+                  "title": "Residential Land in Riyadh",
+                  "type": "LAND",
+                  "city": "Riyadh",
+                  "district": "Al Narjis",
+                  "googlePlaceId": "ChIJRushdPlace123",
+                  "formattedAddress": "حي الياسمين، الرياض، السعودية",
+                  "neighborhood": "حي الياسمين",
+                  "latitude": %s,
+                  "longitude": %s,
+                  "area": 450.50,
+                  "price": 1250000,
+                  "streetWidth": 20,
+                  "purpose": "RESIDENTIAL",
+                  "description": "Corner residential land"
+                }
+                """.formatted(latitude, longitude);
     }
 }

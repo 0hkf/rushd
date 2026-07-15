@@ -3,6 +3,7 @@ package com.rushd.controller;
 import com.rushd.dto.CreatePropertyRequest;
 import com.rushd.dto.PageResponse;
 import com.rushd.dto.PropertyResponse;
+import com.rushd.dto.UpdatePropertyRequest;
 import com.rushd.entity.PropertyType;
 import com.rushd.exception.InvalidPropertyQueryException;
 import com.rushd.service.PropertyService;
@@ -18,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -72,6 +74,16 @@ public class PropertyController {
             Authentication authentication) {
         PropertyResponse response = propertyService.createProperty(request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
+    public ResponseEntity<PropertyResponse> updateProperty(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdatePropertyRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(
+                propertyService.updateProperty(id, request, authentication.getName()));
     }
 
     private Pageable createPageable(int page, int size, String sort) {

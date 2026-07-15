@@ -2,8 +2,8 @@ package com.rushd.service;
 
 import com.rushd.dto.CreatePropertyRequest;
 import com.rushd.dto.PropertyResponse;
+import com.rushd.dto.UpdatePropertyRequest;
 import com.rushd.entity.Property;
-import com.rushd.entity.PropertyFacade;
 import com.rushd.entity.PropertyStatus;
 import com.rushd.entity.PropertyType;
 import com.rushd.entity.Role;
@@ -39,9 +39,7 @@ public class PropertyService {
     @Transactional
     public PropertyResponse createProperty(CreatePropertyRequest request,
                                            String authenticatedEmail) {
-        String normalizedEmail = authenticatedEmail.trim().toLowerCase(Locale.ROOT);
-        User seller = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new UserNotFoundException(normalizedEmail));
+        User seller = findAuthenticatedUser(authenticatedEmail);
 
         if (seller.getRole() != Role.SELLER) {
             throw new AccessDeniedException("Only sellers can create properties");
@@ -49,22 +47,27 @@ public class PropertyService {
 
         Property property = new Property();
         property.setSeller(seller);
-        property.setTitle(request.getTitle().trim());
-        property.setType(request.getType());
-        property.setCity(request.getCity().trim());
-        property.setDistrict(request.getDistrict().trim());
-        property.setArea(request.getArea());
-        property.setPrice(request.getPrice());
-        property.setStreetWidth(request.getStreetWidth());
-        property.setFacade(request.getFacade() == null
-                ? PropertyFacade.UNKNOWN
-                : request.getFacade());
-        property.setPurpose(request.getPurpose());
-        property.setDescription(request.getDescription());
-        property.setStatus(request.getStatus() == null
-                ? PropertyStatus.ACTIVE
-                : request.getStatus());
+        PropertyMapper.applyCreateRequest(property, request);
 
+        return PropertyMapper.toResponse(propertyRepository.save(property));
+    }
+
+    @Transactional
+    public PropertyResponse updateProperty(Long id,
+                                           UpdatePropertyRequest request,
+                                           String authenticatedEmail) {
+        User authenticatedUser = findAuthenticatedUser(authenticatedEmail);
+        Property property = propertyRepository.findById(id)
+                .orElseThrow(() -> new PropertyNotFoundException(id));
+
+        boolean isAdmin = authenticatedUser.getRole() == Role.ADMIN;
+        boolean isOwner = authenticatedUser.getRole() == Role.SELLER
+                && authenticatedUser.getId().equals(property.getSeller().getId());
+        if (!isAdmin && !isOwner) {
+            throw new AccessDeniedException("Only the property owner or an admin can update properties");
+        }
+
+        PropertyMapper.applyUpdateRequest(property, request);
         return PropertyMapper.toResponse(propertyRepository.save(property));
     }
 
@@ -113,6 +116,12 @@ public class PropertyService {
                         || (user.getRole() == Role.SELLER
                         && user.getId().equals(property.getSeller().getId())))
                 .orElse(false);
+    }
+
+    private User findAuthenticatedUser(String authenticatedEmail) {
+        String normalizedEmail = authenticatedEmail.trim().toLowerCase(Locale.ROOT);
+        return userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new UserNotFoundException(normalizedEmail));
     }
 
     private void validatePriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
