@@ -5,11 +5,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -51,6 +53,28 @@ public class GlobalExceptionHandler {
     }
 
     // -------------------------------------------------------------------------
+    // 400 — Invalid query parameter type or value
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponse(400, "Bad Request",
+                        "Invalid value for parameter: " + ex.getName(),
+                        request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvalidPropertyQueryException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPropertyQuery(
+            InvalidPropertyQueryException ex, HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponse(400, "Bad Request", ex.getMessage(), request.getRequestURI()));
+    }
+
+    // -------------------------------------------------------------------------
     // 401 — Invalid login credentials
     // -------------------------------------------------------------------------
 
@@ -71,12 +95,32 @@ public class GlobalExceptionHandler {
     }
 
     // -------------------------------------------------------------------------
+    // 403 — Authenticated user lacks the required role
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                new ErrorResponse(403, "Forbidden", ex.getMessage(), request.getRequestURI()));
+    }
+
+    // -------------------------------------------------------------------------
     // 404 — User not found
     // -------------------------------------------------------------------------
 
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUserNotFound(
             UserNotFoundException ex, HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponse(404, "Not Found", ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(PropertyNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePropertyNotFound(
+            PropertyNotFoundException ex, HttpServletRequest request) {
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 new ErrorResponse(404, "Not Found", ex.getMessage(), request.getRequestURI()));
