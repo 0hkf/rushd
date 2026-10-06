@@ -45,6 +45,11 @@ function Navbar() {
               </NavLink>
             </li>
             <li>
+              <NavLink to="/property-needs" onClick={closeMenu}>
+                احتياجاتي العقارية
+              </NavLink>
+            </li>
+            <li>
               <NavLink to="/dashboard" onClick={closeMenu}>
                 {user?.role === 'ADMIN' ? 'إدارة العقارات' : 'حسابي'}
               </NavLink>

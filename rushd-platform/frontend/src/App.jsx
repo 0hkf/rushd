@@ -8,6 +8,7 @@ import Login from './pages/Login'
 import Properties from './pages/Properties'
 import Dashboard from './pages/Dashboard'
 import PropertyDetails from './pages/PropertyDetails'
+import PropertyNeeds from './pages/PropertyNeeds'
 import './pages/Pages.css'
 import './pages/Management.css'
 
@@ -17,7 +18,9 @@ function App() {
   useEffect(
     () =>
       onAuthenticationLost(() => {
-        if (window.location.pathname === '/dashboard') navigate('/login', { replace: true })
+        const returnTo = window.location.pathname
+        if (['/dashboard', '/property-needs'].includes(returnTo))
+          navigate('/login', { replace: true, state: { returnTo } })
       }),
     [navigate],
   )
@@ -38,6 +41,7 @@ function App() {
           <Route path="/properties" element={<Properties />} />
           <Route path="/properties/:id" element={<PropertyDetails />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/property-needs" element={<PropertyNeeds />} />
         </Routes>
       </main>
       <Footer />

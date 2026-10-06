@@ -1,12 +1,14 @@
 # روافد العقارية | Rawafed Real Estate
 
-روافد العقارية منصة ويب تساعد المستخدم على تحليل القرار العقاري قبل الشراء أو الاستثمار.
+روافد العقارية منصة ويب لعروض البيع والإيجار، تستهدف مساعدة المستخدم على اختيار عقار مناسب لاحتياجاته وفهم مواصفاته وسعره.
 
 ## المشكلة
 
 Many buyers do not know if a land/property price is fair.
 
 تساعد روافد العقارية المستخدم على قراءة الأرقام بشكل أوضح، مثل سعر المتر، المقارنة مع متوسط السوق، ونقاط القوة والمخاطر قبل اتخاذ القرار.
+
+الفكرة المستهدفة الجديدة: يجمع مساعد احتياجات المستخدم ويرشح من العروض المنشورة مع تبرير واضح، أو يشرح ملاءمة عقار يختاره المستخدم. ملاءمة الاحتياجات منفصلة عن تحليل سعر السوق؛ هذه الميزة لم تنفذ بعد.
 
 ## الخصائص الرئيسية
 
@@ -15,9 +17,10 @@ Many buyers do not know if a land/property price is fair.
 - Admin manually adds and updates sale/rental property specifications
 - Browse properties
 - Property details page
-- Planned: calculate price per meter
+- Authenticated structured property-needs form with backend validation (no matching/AI yet)
+- Planned: type-appropriate price indicators (price per m² only for comparable area definitions)
 - Planned: compare with market average entered manually
-- مخطط لاحقًا: تقييم روافد من 100
+- Planned: personalized property matching with grounded explanations (scoring rules not approved yet)
 - Planned: strengths and risks
 - Planned: compare properties
 - Planned: favorites
@@ -33,9 +36,13 @@ Many buyers do not know if a land/property price is fair.
 
 ## التوثيق
 
+- [مسودة المتطلبات الجديدة](docs/requirements.md) — القرارات المؤكدة والأسئلة المفتوحة
+- [خطة العمل المبدئية](docs/roadmap.md) — مراحل مرنة، ثلاثة أيام عمل أسبوعيًا، وميزانية صفر
+
 - [التصميم المعتمد](docs/design.md) — هوية روافد العقارية، الألوان، المكونات وقواعد جميع الصفحات
 - [نطاق النسخة الأولى](docs/mvp-scope.md)
 - [عقد العقارات وترقية قاعدة البيانات](docs/api-properties.md)
+- [احتياجات المستخدم وعقد التحقق](docs/api-property-needs.md) — نموذج للمسجلين، دون حفظ دائم أو ترشيح بعد
 - [المصادقة والأدوار](docs/api-auth.md)
 - [الميزات المؤجلة](docs/backlog.md)
 - [معمارية المشروع](docs/architecture.md) — مخطط التدفق، الطبقات، نقاط النهاية، وخطوات التشغيل

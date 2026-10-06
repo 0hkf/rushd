@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
 import { BrandMark } from '../components/Brand'
 import { useAuth } from '../services/authState'
 import { errorMessage } from '../services/property'
+import { loginDestination } from '../services/loginDestination'
 
 function Login() {
   const { user, login } = useAuth()
   const navigate = useNavigate()
+  const { state } = useLocation()
+  const destination = loginDestination(state)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -18,7 +21,7 @@ function Login() {
     setBusy(true)
     try {
       await login(email, password)
-      navigate('/dashboard')
+      navigate(destination, { replace: true })
     } catch (error) {
       setError(errorMessage(error))
     } finally {
@@ -50,8 +53,8 @@ function Login() {
           {user ? (
             <>
               <p>أنت مسجل باسم {user.name}.</p>
-              <Link to="/dashboard" className="button button-red">
-                الذهاب إلى لوحة التحكم
+              <Link to={destination} className="button button-red">
+                {destination === '/property-needs' ? 'متابعة احتياجاتي العقارية' : 'الذهاب إلى لوحة التحكم'}
               </Link>
             </>
           ) : (

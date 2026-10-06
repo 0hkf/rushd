@@ -10,6 +10,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.csrf.*;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.*;
@@ -46,7 +47,10 @@ public class SecurityConfig {
     }
     @Bean public SecurityFilterChain securityFilterChain(HttpSecurity http, CsrfTokenRepository csrf, AuthRateLimitFilter rateLimit) throws Exception {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(config -> config.csrfTokenRepository(csrf))
+            // JWT authentication is reconstructed on every request, not a fresh login.
+            // AuthController explicitly rotates CSRF at login, refresh, and logout.
+            .csrf(config -> config.csrfTokenRepository(csrf)
+                    .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/health", "/api/auth/csrf", "/api/auth/register", "/api/auth/login",
