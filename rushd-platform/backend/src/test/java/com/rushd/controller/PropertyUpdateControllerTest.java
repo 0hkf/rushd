@@ -53,7 +53,7 @@ class PropertyUpdateControllerTest {
 
     @BeforeEach
     void setUp() {
-        owner = saveUser("Owner Seller", "update-owner@rushd.com", Role.SELLER);
+        owner = saveUser("Publishing Admin", "update-owner@rushd.com", Role.ADMIN);
         otherSeller = saveUser("Other Seller", "update-other@rushd.com", Role.SELLER);
         buyer = saveUser("Rushd Buyer", "update-buyer@rushd.com", Role.BUYER);
         admin = saveUser("Rushd Admin", "update-admin@rushd.com", Role.ADMIN);
@@ -61,15 +61,15 @@ class PropertyUpdateControllerTest {
     }
 
     @Test
-    void ownerCanUpdateProperty() throws Exception {
+    void publishingAdminCanUpdateProperty() throws Exception {
         putAs(owner, validUpdateRequest("Owner Updated Villa"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Owner Updated Villa"))
-                .andExpect(jsonPath("$.sellerId").value(owner.getId()));
+                .andExpect(jsonPath("$.publisherId").value(owner.getId()));
 
         Property updated = propertyRepository.findById(property.getId()).orElseThrow();
         assertEquals("Owner Updated Villa", updated.getTitle());
-        assertEquals(owner.getId(), updated.getSeller().getId());
+        assertEquals(owner.getId(), updated.getPublisher().getId());
     }
 
     @Test
@@ -77,7 +77,7 @@ class PropertyUpdateControllerTest {
         putAs(admin, validUpdateRequest("Admin Updated Villa"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Admin Updated Villa"))
-                .andExpect(jsonPath("$.sellerId").value(owner.getId()));
+                .andExpect(jsonPath("$.publisherId").value(owner.getId()));
     }
 
     @Test
@@ -98,20 +98,20 @@ class PropertyUpdateControllerTest {
     }
 
     @Test
-    void suppliedSellerIdCannotChangeOwnership() throws Exception {
+    void suppliedPublisherIdCannotChangeAuthorship() throws Exception {
         String request = validUpdateRequest("Still Owned Villa")
-                .replace("{", "{\n  \"sellerId\": " + otherSeller.getId() + ",");
+                .replace("{", "{\n  \"publisherId\": " + otherSeller.getId() + ",");
 
         putAs(owner, request)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sellerId").value(owner.getId()));
+                .andExpect(jsonPath("$.publisherId").value(owner.getId()));
 
         Property updated = propertyRepository.findById(property.getId()).orElseThrow();
-        assertEquals(owner.getId(), updated.getSeller().getId());
+        assertEquals(owner.getId(), updated.getPublisher().getId());
     }
 
     @Test
-    void ownerCanUpdateStructuredLocation() throws Exception {
+    void adminCanUpdateStructuredLocation() throws Exception {
         putAs(owner, updateRequestWithLocation())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.googlePlaceId").value("ChIJUpdatedPlace456"))
@@ -141,9 +141,9 @@ class PropertyUpdateControllerTest {
     }
 
     private ResultActions putAs(User user, String request) throws Exception {
-        String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
-        return mockMvc.perform(put("/api/properties/{id}", property.getId())
-                .header("Authorization", "Bearer " + token)
+        String token = jwtService.generateAccessToken(user.getEmail());
+        return mockMvc.perform(put("/api/properties/{id}", property.getId()).with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
+                .cookie(new jakarta.servlet.http.Cookie(com.rushd.service.AuthCookieService.ACCESS, token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
     }
@@ -159,7 +159,7 @@ class PropertyUpdateControllerTest {
 
     private Property saveProperty() {
         Property saved = new Property();
-        saved.setSeller(owner);
+        saved.setPublisher(owner);
         saved.setTitle("Original Villa");
         saved.setType(PropertyType.VILLA);
         saved.setCity("Riyadh");

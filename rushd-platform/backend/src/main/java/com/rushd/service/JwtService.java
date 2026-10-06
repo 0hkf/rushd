@@ -1,85 +1,45 @@
 package com.rushd.service;
 
+import com.rushd.config.JwtProperties;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-
 import java.security.Key;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 @Service
 public class JwtService {
+    private final JwtProperties policy;
+    private final Clock clock;
+    private final Key key;
 
-    @Value("${jwt.secret}")
-    private String secret;
+    public JwtService(JwtProperties policy, Clock clock) {
+        this.policy = policy;
+        this.clock = clock;
+        this.key = Keys.hmacShaKeyFor(policy.secret().getBytes(StandardCharsets.UTF_8));
+    }
 
-    @Value("${jwt.expiration}")
-    private Long expiration;
+    public String generateAccessToken(String email) {
+        Instant now = clock.instant();
+        return Jwts.builder().setSubject(email).claim("token_type", "access")
+                .setIssuedAt(Date.from(now)).setExpiration(Date.from(now.plus(policy.accessTokenTtl())))
+                .signWith(key, SignatureAlgorithm.HS256).compact();
+    }
 
-    private Key getSigningKey() {
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            byte[] paddedKey = new byte[32];
-            System.arraycopy(keyBytes, 0, paddedKey, 0, keyBytes.length);
-            return Keys.hmacShaKeyFor(paddedKey);
+    public Claims validateAccessToken(String token) {
+        Claims claims = Jwts.parserBuilder().setSigningKey(key)
+                .setClock(() -> Date.from(clock.instant())).build().parseClaimsJws(token).getBody();
+        if (!"access".equals(claims.get("token_type", String.class))
+                || claims.getSubject() == null || claims.getSubject().isBlank()
+                || claims.getExpiration() == null || !claims.getExpiration().toInstant().isAfter(clock.instant())) {
+            throw new JwtException("Invalid access credential");
         }
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
-
-    private Claims parseAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-    }
-
-    public String generateToken(String email, String role) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("role", role);
-        return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(email)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    public String extractUsername(String token) {
-        return parseAllClaims(token).getSubject();
-    }
-
-    public String extractRole(String token) {
-        return parseAllClaims(token).get("role", String.class);
-    }
-
-    public Date extractExpiration(String token) {
-        return parseAllClaims(token).getExpiration();
-    }
-
-    public boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        try {
-            String username = extractUsername(token);
-            return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    public Long getExpirationTime() {
-        return expiration;
+        return claims;
     }
 }

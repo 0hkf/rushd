@@ -6,6 +6,8 @@ import com.rushd.dto.UpdatePropertyRequest;
 import com.rushd.entity.Property;
 import com.rushd.entity.PropertyStatus;
 import com.rushd.entity.PropertyType;
+import com.rushd.entity.ListingType;
+import com.rushd.entity.RentalPeriod;
 import com.rushd.entity.Role;
 import com.rushd.entity.User;
 import com.rushd.exception.InvalidPropertyQueryException;
@@ -39,14 +41,14 @@ public class PropertyService {
     @Transactional
     public PropertyResponse createProperty(CreatePropertyRequest request,
                                            String authenticatedEmail) {
-        User seller = findAuthenticatedUser(authenticatedEmail);
+        User publisher = findAuthenticatedUser(authenticatedEmail);
 
-        if (seller.getRole() != Role.SELLER) {
-            throw new AccessDeniedException("Only sellers can create properties");
+        if (publisher.getRole() != Role.ADMIN) {
+            throw new AccessDeniedException("Only admins can create properties");
         }
 
         Property property = new Property();
-        property.setSeller(seller);
+        property.setPublisher(publisher);
         PropertyMapper.applyCreateRequest(property, request);
 
         return PropertyMapper.toResponse(propertyRepository.save(property));
@@ -60,11 +62,8 @@ public class PropertyService {
         Property property = propertyRepository.findById(id)
                 .orElseThrow(() -> new PropertyNotFoundException(id));
 
-        boolean isAdmin = authenticatedUser.getRole() == Role.ADMIN;
-        boolean isOwner = authenticatedUser.getRole() == Role.SELLER
-                && authenticatedUser.getId().equals(property.getSeller().getId());
-        if (!isAdmin && !isOwner) {
-            throw new AccessDeniedException("Only the property owner or an admin can update properties");
+        if (authenticatedUser.getRole() != Role.ADMIN) {
+            throw new AccessDeniedException("Only admins can update properties");
         }
 
         PropertyMapper.applyUpdateRequest(property, request);
@@ -76,6 +75,8 @@ public class PropertyService {
             String city,
             String district,
             PropertyType type,
+            ListingType listingType,
+            RentalPeriod rentalPeriod,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             Pageable pageable) {
@@ -83,7 +84,7 @@ public class PropertyService {
 
         return propertyRepository.findAll(
                         PropertySpecification.activeProperties(
-                                city, district, type, minPrice, maxPrice),
+                                city, district, type, listingType, rentalPeriod, minPrice, maxPrice),
                         pageable)
                 .map(PropertyMapper::toResponse);
     }
@@ -100,6 +101,11 @@ public class PropertyService {
         return PropertyMapper.toDetailsResponse(property);
     }
 
+    @Transactional(readOnly = true)
+    public Page<PropertyResponse> listManagedProperties(Pageable pageable) {
+        return propertyRepository.findAll(pageable).map(PropertyMapper::toResponse);
+    }
+
     private boolean isPubliclyVisible(Property property) {
         return property.getStatus() == PropertyStatus.ACTIVE
                 || property.getStatus() == PropertyStatus.SOLD;
@@ -112,9 +118,7 @@ public class PropertyService {
 
         String normalizedEmail = authenticatedEmail.trim().toLowerCase(Locale.ROOT);
         return userRepository.findByEmail(normalizedEmail)
-                .map(user -> user.getRole() == Role.ADMIN
-                        || (user.getRole() == Role.SELLER
-                        && user.getId().equals(property.getSeller().getId())))
+                .map(user -> user.getRole() == Role.ADMIN)
                 .orElse(false);
     }
 

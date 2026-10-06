@@ -5,6 +5,8 @@ import com.rushd.dto.PageResponse;
 import com.rushd.dto.PropertyResponse;
 import com.rushd.dto.UpdatePropertyRequest;
 import com.rushd.entity.PropertyType;
+import com.rushd.entity.ListingType;
+import com.rushd.entity.RentalPeriod;
 import com.rushd.exception.InvalidPropertyQueryException;
 import com.rushd.service.PropertyService;
 import jakarta.validation.Valid;
@@ -48,6 +50,8 @@ public class PropertyController {
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String district,
             @RequestParam(required = false) PropertyType type,
+            @RequestParam(required = false) ListingType listingType,
+            @RequestParam(required = false) RentalPeriod rentalPeriod,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(defaultValue = "0") int page,
@@ -55,7 +59,7 @@ public class PropertyController {
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
         Pageable pageable = createPageable(page, size, sort);
         Page<PropertyResponse> properties = propertyService.listProperties(
-                city, district, type, minPrice, maxPrice, pageable);
+                city, district, type, listingType, rentalPeriod, minPrice, maxPrice, pageable);
         return ResponseEntity.ok(PageResponse.from(properties));
     }
 
@@ -68,7 +72,7 @@ public class PropertyController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('SELLER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PropertyResponse> createProperty(
             @Valid @RequestBody CreatePropertyRequest request,
             Authentication authentication) {
@@ -77,7 +81,7 @@ public class PropertyController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SELLER', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PropertyResponse> updateProperty(
             @PathVariable Long id,
             @Valid @RequestBody UpdatePropertyRequest request,

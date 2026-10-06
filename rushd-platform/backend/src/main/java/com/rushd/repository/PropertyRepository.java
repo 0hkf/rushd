@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface PropertyRepository extends JpaRepository<Property, Long>, JpaSpecificationExecutor<Property> {
 
-    List<Property> findBySellerId(Long sellerId);
+    List<Property> findByPublisherId(Long sellerId);
 
     List<Property> findByStatus(PropertyStatus status);
 }

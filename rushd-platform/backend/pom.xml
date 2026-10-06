@@ -14,8 +14,8 @@
     <groupId>com.rushd</groupId>
     <artifactId>rushd-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>rushd-backend</name>
-    <description>Rushd backend API</description>
+    <name>Rawafed Real Estate Backend</name>
+    <description>Rawafed Real Estate backend API</description>
 
     <properties>
         <java.version>17</java.version>

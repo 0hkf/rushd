@@ -1,6 +1,8 @@
 package com.rushd.dto;
 
 import com.rushd.entity.Role;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +23,12 @@ public class RegisterRequest {
 
     @NotNull(message = "الدور مطلوب")
     private Role role;
+
+    @JsonIgnore
+    @AssertTrue(message = "التسجيل العام متاح للمستخدم فقط")
+    public boolean isPublicRoleValid() {
+        return role == null || role == Role.BUYER;
+    }
 
     public String getName() {
         return name;

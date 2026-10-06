@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: classpath:auth-policy.yml
   datasource:
     url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
@@ -12,6 +14,14 @@ spring:
         dialect: org.hibernate.dialect.H2Dialect
     open-in-view: false
 
-jwt:
-  secret: test-secret-key-with-at-least-32-characters-for-tests
-  expiration: 86400000
+
+security:
+  jwt:
+    secret: test-only-signing-key-with-at-least-32-bytes
+  auth:
+    cookie-secure: false
+    cookie-same-site: Lax
+    frontend-origin: http://localhost:5173
+    rate-limit:
+      login-requests: 1000
+      refresh-requests: 1000

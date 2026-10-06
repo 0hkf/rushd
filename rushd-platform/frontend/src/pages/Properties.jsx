@@ -1,73 +1,183 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import Icon from '../components/Icon'
+import api from '../services/api'
+import { propertyTypes, money, priceSuffix, errorMessage } from '../services/property'
+
 function Properties() {
-  const placeholderProperties = [
-    { id: 1, title: 'شقة في الرياض – حي النرجس', price: '850,000 ر.س', area: '150 م²', type: 'شقة' },
-    { id: 2, title: 'أرض في جدة – حي الشاطئ', price: '1,200,000 ر.س', area: '400 م²', type: 'أرض' },
-    { id: 3, title: 'فيلا في الدمام – حي الفيصلية', price: '2,500,000 ر.س', area: '350 م²', type: 'فيلا' },
-  ]
-
+  const [listingType, setListingType] = useState('')
+  const [rentalPeriod, setRentalPeriod] = useState('')
+  const [page, setPage] = useState(0)
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [retry, setRetry] = useState(0)
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError('')
+    api
+      .get('/api/properties', {
+        params: {
+          page,
+          size: 12,
+          listingType: listingType || undefined,
+          rentalPeriod: listingType === 'RENT' ? rentalPeriod || undefined : undefined,
+        },
+      })
+      .then(({ data }) => {
+        if (active) setResult(data)
+      })
+      .catch((error) => {
+        if (active) setError(errorMessage(error))
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [listingType, rentalPeriod, page, retry])
   return (
-    <div className="page" dir="rtl" style={{ padding: '2rem' }}>
-      <h1 style={{ color: '#1a1a2e', marginBottom: '0.5rem' }}>العقارات</h1>
-      <p style={{ color: '#666', marginBottom: '2rem' }}>استعرض العقارات المتاحة وحلل أسعارها</p>
-
-      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-        {placeholderProperties.map((property) => (
-          <div
-            key={property.id}
-            style={{
-              background: '#fff',
-              border: '1px solid #eee',
-              borderRadius: '10px',
-              padding: '1.5rem',
-              width: '260px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
-            }}
-          >
-            <span
-              style={{
-                background: '#f0e8d8',
-                color: '#8a6a2e',
-                fontSize: '0.75rem',
-                padding: '0.2rem 0.6rem',
-                borderRadius: '12px',
-                fontWeight: '600',
-              }}
-            >
-              {property.type}
-            </span>
-            <h3 style={{ color: '#1a1a2e', margin: '0.75rem 0 0.5rem', fontSize: '1rem' }}>
-              {property.title}
-            </h3>
-            <p style={{ color: '#e2b96f', fontWeight: '700', fontSize: '1.05rem', margin: '0.25rem 0' }}>
-              {property.price}
-            </p>
-            <p style={{ color: '#888', fontSize: '0.875rem' }}>المساحة: {property.area}</p>
+    <div className="page container">
+      <header className="page-heading">
+        <span className="eyebrow">عروض تديرها روافد العقارية</span>
+        <h1>
+          للبيع أو للإيجار.
+          <br />
+          خطوتك القادمة هنا.
+        </h1>
+        <p>
+          مواصفات يضيفها الأدمن مباشرة، وأسعار واضحة للعقارات المعروضة للبيع أو للإيجار الشهري
+          والسنوي.
+        </p>
+      </header>
+      <div className="catalog-heading">
+        <h2>العقارات</h2>
+        <span className="badge">
+          {loading ? 'جارٍ التحميل' : result ? `${result.totalElements} عقار` : 'العروض'}
+        </span>
+      </div>
+      <div className="catalog-filters">
+        <div className="filter-tabs" aria-label="نوع العرض">
+          {[
+            ['', 'كل العروض'],
+            ['SALE', 'للبيع'],
+            ['RENT', 'للإيجار'],
+          ].map(([value, label]) => (
             <button
-              disabled
-              style={{
-                marginTop: '1rem',
-                width: '100%',
-                padding: '0.5rem',
-                background: '#1a1a2e',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'not-allowed',
-                opacity: 0.6,
-                fontSize: '0.875rem',
+              type="button"
+              key={value}
+              className={listingType === value ? 'selected' : ''}
+              aria-pressed={listingType === value}
+              onClick={() => {
+                setListingType(value)
+                setRentalPeriod('')
+                setPage(0)
               }}
             >
-              عرض التفاصيل
+              {label}
+            </button>
+          ))}
+        </div>
+        {listingType === 'RENT' && (
+          <div className="form-field rental-filter">
+            <label htmlFor="rental-filter">فترة الإيجار</label>
+            <select
+              id="rental-filter"
+              value={rentalPeriod}
+              onChange={(e) => {
+                setRentalPeriod(e.target.value)
+                setPage(0)
+              }}
+            >
+              <option value="">شهري وسنوي</option>
+              <option value="MONTHLY">شهري</option>
+              <option value="YEARLY">سنوي</option>
+            </select>
+          </div>
+        )}
+      </div>
+      {loading ? (
+        <p className="notice" role="status">
+          جارٍ تحميل العقارات…
+        </p>
+      ) : error ? (
+        <div className="notice feedback-error" role="alert">
+          <p>{error}</p>
+          <button className="button button-outline" onClick={() => setRetry(retry + 1)}>
+            إعادة المحاولة
+          </button>
+        </div>
+      ) : result?.content.length ? (
+        <>
+          <div className="property-grid">
+            {result.content.map((property, index) => (
+              <article className="property-card panel" key={property.id}>
+                <div
+                  className={`property-cover ${property.listingType === 'RENT' ? 'property-cover-red' : 'property-cover-beige'}`}
+                >
+                  <span className="property-number">
+                    {String(page * 12 + index + 1).padStart(2, '0')}
+                  </span>
+                  <Icon name="home" />
+                  <span className="badge badge-beige">
+                    {property.listingType === 'RENT' ? 'للإيجار' : 'للبيع'} ·{' '}
+                    {propertyTypes[property.type] || property.type}
+                  </span>
+                </div>
+                <div className="property-body">
+                  <p className="property-city">
+                    <Icon name="pin" />
+                    {property.city} · {property.district}
+                  </p>
+                  <h3>{property.title}</h3>
+                  <p className="property-price">
+                    <strong>{money(property.price)}</strong>
+                    <span>{priceSuffix(property)}</span>
+                  </p>
+                  <p className="property-area">
+                    <Icon name="area" />
+                    المساحة <strong>{money(property.area)} م²</strong>
+                  </p>
+                  <Link
+                    to={`/properties/${property.id}`}
+                    className="button button-outline button-wide"
+                  >
+                    عرض المواصفات <Icon name="arrow" />
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="pagination">
+            <button
+              className="button button-outline"
+              disabled={result.first}
+              onClick={() => setPage(page - 1)}
+            >
+              السابق
+            </button>
+            <span>
+              صفحة {page + 1} من {result.totalPages}
+            </span>
+            <button
+              className="button button-outline"
+              disabled={result.last}
+              onClick={() => setPage(page + 1)}
+            >
+              التالي
             </button>
           </div>
-        ))}
-      </div>
-
-      <p style={{ marginTop: '2rem', color: '#aaa', fontSize: '0.85rem' }}>
-        📌 هذه بيانات تجريبية — سيتم ربط العقارات بالـ Backend لاحقاً
-      </p>
+        </>
+      ) : (
+        <div className="panel empty-state">
+          <Icon name="home" />
+          <h2>لا توجد عروض حاليًا</h2>
+          <p>ستظهر العقارات هنا بعد أن ينشرها الأدمن، أو جرّب نوع عرض آخر.</p>
+        </div>
+      )}
     </div>
   )
 }
-
 export default Properties

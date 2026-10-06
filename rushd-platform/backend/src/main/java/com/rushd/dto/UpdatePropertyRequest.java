@@ -1,5 +1,9 @@
 package com.rushd.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.rushd.entity.ListingType;
+import com.rushd.entity.RentalPeriod;
+import jakarta.validation.constraints.AssertTrue;
 import com.rushd.entity.PropertyFacade;
 import com.rushd.entity.PropertyPurpose;
 import com.rushd.entity.PropertyStatus;
@@ -21,6 +25,36 @@ public class UpdatePropertyRequest {
 
     @NotNull(message = "نوع العقار مطلوب")
     private PropertyType type;
+
+    @NotNull(message = "نوع العرض مطلوب")
+    private ListingType listingType = ListingType.SALE;
+
+    private RentalPeriod rentalPeriod;
+
+    @JsonIgnore
+    @AssertTrue(message = "حدد الفترة الشهرية أو السنوية للإيجار فقط")
+    public boolean isRentalPricingValid() {
+        if (listingType == null) {
+            return true;
+        }
+        return listingType == ListingType.RENT ? rentalPeriod != null : rentalPeriod == null;
+    }
+
+    public ListingType getListingType() {
+        return listingType;
+    }
+
+    public void setListingType(ListingType listingType) {
+        this.listingType = listingType;
+    }
+
+    public RentalPeriod getRentalPeriod() {
+        return rentalPeriod;
+    }
+
+    public void setRentalPeriod(RentalPeriod rentalPeriod) {
+        this.rentalPeriod = rentalPeriod;
+    }
 
     @NotBlank(message = "المدينة مطلوبة")
     @Size(max = 100, message = "المدينة يجب ألا تتجاوز 100 حرف")

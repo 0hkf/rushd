@@ -52,7 +52,7 @@ class PropertyDetailsControllerTest {
 
     @BeforeEach
     void setUp() {
-        owner = saveUser("Owner Seller", "owner@rushd.com", Role.SELLER);
+        owner = saveUser("Publishing Admin", "owner@rushd.com", Role.ADMIN);
         otherSeller = saveUser("Other Seller", "other@rushd.com", Role.SELLER);
         admin = saveUser("Rushd Admin", "admin-details@rushd.com", Role.ADMIN);
 
@@ -74,9 +74,9 @@ class PropertyDetailsControllerTest {
         getAs(activeProperty.getId(), otherSeller)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(activeProperty.getId()))
-                .andExpect(jsonPath("$.seller.id").value(owner.getId()))
-                .andExpect(jsonPath("$.seller.name").value("Owner Seller"))
-                .andExpect(jsonPath("$.seller.role").value("SELLER"))
+                .andExpect(jsonPath("$.publisher.id").value(owner.getId()))
+                .andExpect(jsonPath("$.publisher.name").value("Publishing Admin"))
+                .andExpect(jsonPath("$.publisher.role").value("ADMIN"))
                 .andExpect(jsonPath("$.title").value("Active Villa"))
                 .andExpect(jsonPath("$.type").value("VILLA"))
                 .andExpect(jsonPath("$.city").value("Riyadh"))
@@ -167,14 +167,14 @@ class PropertyDetailsControllerTest {
         mockMvc.perform(get("/api/properties/{id}", activeProperty.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.password").doesNotExist())
-                .andExpect(jsonPath("$.seller.password").doesNotExist())
-                .andExpect(jsonPath("$.seller.email").doesNotExist());
+                .andExpect(jsonPath("$.publisher.password").doesNotExist())
+                .andExpect(jsonPath("$.publisher.email").doesNotExist());
     }
 
     private ResultActions getAs(Long propertyId, User user) throws Exception {
-        String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
+        String token = jwtService.generateAccessToken(user.getEmail());
         return mockMvc.perform(get("/api/properties/{id}", propertyId)
-                .header("Authorization", "Bearer " + token));
+                .cookie(new jakarta.servlet.http.Cookie(com.rushd.service.AuthCookieService.ACCESS, token)));
     }
 
     private User saveUser(String name, String email, Role role) {
@@ -188,7 +188,7 @@ class PropertyDetailsControllerTest {
 
     private Property saveProperty(String title, PropertyStatus status) {
         Property property = new Property();
-        property.setSeller(owner);
+        property.setPublisher(owner);
         property.setTitle(title);
         property.setType(PropertyType.VILLA);
         property.setCity("Riyadh");

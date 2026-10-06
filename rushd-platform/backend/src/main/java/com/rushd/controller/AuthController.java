@@ -1,42 +1,73 @@
 package com.rushd.controller;
 
-import com.rushd.dto.LoginRequest;
-import com.rushd.dto.AuthResponse;
-import com.rushd.dto.RegisterRequest;
-import com.rushd.dto.UserResponse;
-import com.rushd.service.AuthService;
+import com.rushd.dto.*;
+import com.rushd.entity.User;
+import com.rushd.service.*;
+import com.rushd.exception.InvalidRefreshTokenException;
+import jakarta.servlet.http.*;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.web.csrf.*;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+    private final AuthService auth;
+    private final JwtService jwt;
+    private final RefreshTokenService refresh;
+    private final AuthCookieService cookies;
+    private final CsrfTokenRepository csrf;
+    public AuthController(AuthService auth, JwtService jwt, RefreshTokenService refresh,
+                          AuthCookieService cookies, CsrfTokenRepository csrf) {
+        this.auth = auth; this.jwt = jwt; this.refresh = refresh; this.cookies = cookies; this.csrf = csrf;
+    }
 
-    private final AuthService authService;
-
-    public AuthController(AuthService authService) {
-        this.authService = authService;
+    @GetMapping("/csrf")
+    public Map<String, String> csrf(CsrfToken token) {
+        return Map.of("token", token.getToken(), "headerName", token.getHeaderName());
     }
 
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
-        UserResponse response = authService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(auth.register(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        AuthResponse response = authService.login(request);
-        return ResponseEntity.ok(response);
+    public AuthResponse login(@Valid @RequestBody LoginRequest body, HttpServletRequest request,
+                              HttpServletResponse response) {
+        User user = auth.authenticate(body);
+        // Re-login replaces this browser's refresh family rather than leaving it active.
+        refresh.revoke(cookies.read(request, AuthCookieService.REFRESH));
+        var issued = refresh.createSession(user);
+        cookies.issue(response, jwt.generateAccessToken(user.getEmail()), issued.credential());
+        csrf.saveToken(null, request, response);
+        return new AuthResponse(UserResponse.from(user));
+    }
+
+    @PostMapping("/refresh")
+    public AuthResponse refresh(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            var issued = refresh.rotate(cookies.read(request, AuthCookieService.REFRESH));
+            cookies.issue(response, jwt.generateAccessToken(issued.user().getEmail()), issued.credential());
+            csrf.saveToken(null, request, response);
+            return new AuthResponse(UserResponse.from(issued.user()));
+        } catch (InvalidRefreshTokenException invalid) {
+            cookies.clear(response);
+            throw invalid;
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        refresh.revoke(cookies.read(request, AuthCookieService.REFRESH));
+        cookies.clear(response);
+        csrf.saveToken(null, request, response);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> me(Authentication authentication) {
-        String email = authentication.getName();
-        UserResponse response = authService.me(email);
-        return ResponseEntity.ok(response);
-    }
+    public UserResponse me(Authentication authentication) { return auth.me(authentication.getName()); }
 }

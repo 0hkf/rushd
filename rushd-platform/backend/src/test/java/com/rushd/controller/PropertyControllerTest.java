@@ -57,14 +57,14 @@ class PropertyControllerTest {
     }
 
     @Test
-    void sellerSuccessfullyCreatesProperty() throws Exception {
-        User seller = buildUser(7L, "seller@rushd.com", "Rushd Seller", Role.SELLER);
+    void adminSuccessfullyCreatesProperty() throws Exception {
+        User seller = buildUser(7L, "admin@rushd.com", "Rawafed Admin", Role.ADMIN);
 
         performAs(seller, validRequest())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(99))
-                .andExpect(jsonPath("$.sellerId").value(7))
-                .andExpect(jsonPath("$.sellerName").value("Rushd Seller"))
+                .andExpect(jsonPath("$.publisherId").value(7))
+                .andExpect(jsonPath("$.publisherName").value("Rawafed Admin"))
                 .andExpect(jsonPath("$.title").value("Residential Land in Riyadh"))
                 .andExpect(jsonPath("$.facade").value("UNKNOWN"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
@@ -74,7 +74,7 @@ class PropertyControllerTest {
                 .andExpect(jsonPath("$.latitude").value((Object) null))
                 .andExpect(jsonPath("$.longitude").value((Object) null))
                 .andExpect(jsonPath("$.password").doesNotExist())
-                .andExpect(jsonPath("$.seller").doesNotExist());
+                .andExpect(jsonPath("$.publisher").doesNotExist());
 
         ArgumentCaptor<Property> propertyCaptor = ArgumentCaptor.forClass(Property.class);
         verify(propertyRepository).save(propertyCaptor.capture());
@@ -86,8 +86,8 @@ class PropertyControllerTest {
     }
 
     @Test
-    void sellerCreatesPropertyWithStructuredLocation() throws Exception {
-        User seller = buildUser(7L, "seller@rushd.com", "Rushd Seller", Role.SELLER);
+    void adminCreatesPropertyWithStructuredLocation() throws Exception {
+        User seller = buildUser(7L, "admin@rushd.com", "Rawafed Admin", Role.ADMIN);
 
         performAs(seller, requestWithLocation("24.7136000", "46.6753000"))
                 .andExpect(status().isCreated())
@@ -117,7 +117,7 @@ class PropertyControllerTest {
     void invalidCoordinatesReturn400(String latitude,
                                      String longitude,
                                      String invalidField) throws Exception {
-        User seller = buildUser(7L, "seller@rushd.com", "Rushd Seller", Role.SELLER);
+        User seller = buildUser(7L, "admin@rushd.com", "Rawafed Admin", Role.ADMIN);
 
         performAs(seller, requestWithLocation(latitude, longitude))
                 .andExpect(status().isBadRequest())
@@ -128,7 +128,7 @@ class PropertyControllerTest {
 
     @Test
     void missingTokenReturns401() throws Exception {
-        mockMvc.perform(post("/api/properties")
+        mockMvc.perform(post("/api/properties").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest()))
                 .andExpect(status().isUnauthorized())
@@ -151,8 +151,8 @@ class PropertyControllerTest {
     }
 
     @Test
-    void adminTokenReturns403() throws Exception {
-        User admin = buildUser(9L, "admin@rushd.com", "Rushd Admin", Role.ADMIN);
+    void legacySellerTokenReturns403() throws Exception {
+        User admin = buildUser(9L, "legacy@rushd.com", "Legacy Seller", Role.SELLER);
 
         performAs(admin, validRequest())
                 .andExpect(status().isForbidden())
@@ -164,7 +164,7 @@ class PropertyControllerTest {
 
     @Test
     void invalidAreaReturns400() throws Exception {
-        User seller = buildUser(7L, "seller@rushd.com", "Rushd Seller", Role.SELLER);
+        User seller = buildUser(7L, "admin@rushd.com", "Rawafed Admin", Role.ADMIN);
         String request = validRequest().replace("\"area\": 450.50", "\"area\": 0");
 
         performAs(seller, request)
@@ -176,7 +176,7 @@ class PropertyControllerTest {
 
     @Test
     void invalidPriceReturns400() throws Exception {
-        User seller = buildUser(7L, "seller@rushd.com", "Rushd Seller", Role.SELLER);
+        User seller = buildUser(7L, "admin@rushd.com", "Rawafed Admin", Role.ADMIN);
         String request = validRequest().replace("\"price\": 1250000", "\"price\": -1");
 
         performAs(seller, request)
@@ -188,7 +188,7 @@ class PropertyControllerTest {
 
     @Test
     void blankTitleReturns400() throws Exception {
-        User seller = buildUser(7L, "seller@rushd.com", "Rushd Seller", Role.SELLER);
+        User seller = buildUser(7L, "admin@rushd.com", "Rawafed Admin", Role.ADMIN);
         String request = validRequest().replace(
                 "\"title\": \"Residential Land in Riyadh\"",
                 "\"title\": \"   \"");
@@ -201,25 +201,25 @@ class PropertyControllerTest {
     }
 
     @Test
-    void suppliedSellerIdCannotOverrideAuthenticatedSeller() throws Exception {
-        User seller = buildUser(7L, "seller@rushd.com", "Rushd Seller", Role.SELLER);
-        String request = validRequest().replace("{", "{\"sellerId\": 999,");
+    void suppliedPublisherIdCannotOverrideAuthenticatedAdmin() throws Exception {
+        User seller = buildUser(7L, "admin@rushd.com", "Rawafed Admin", Role.ADMIN);
+        String request = validRequest().replace("{", "{\"publisherId\": 999,");
 
         performAs(seller, request)
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.sellerId").value(7));
+                .andExpect(jsonPath("$.publisherId").value(7));
 
         ArgumentCaptor<Property> propertyCaptor = ArgumentCaptor.forClass(Property.class);
         verify(propertyRepository).save(propertyCaptor.capture());
-        assertEquals(7L, propertyCaptor.getValue().getSeller().getId());
+        assertEquals(7L, propertyCaptor.getValue().getPublisher().getId());
     }
 
     private ResultActions performAs(User user, String request) throws Exception {
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
+        String token = jwtService.generateAccessToken(user.getEmail());
 
-        return mockMvc.perform(post("/api/properties")
-                .header("Authorization", "Bearer " + token)
+        return mockMvc.perform(post("/api/properties").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
+                .cookie(new jakarta.servlet.http.Cookie(com.rushd.service.AuthCookieService.ACCESS, token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
     }

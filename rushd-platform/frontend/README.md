@@ -1,16 +1,41 @@
-# React + Vite
+# واجهة روافد العقارية
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+واجهة React 19 + Vite، باللغة العربية واتجاه RTL.
 
-Currently, two official plugins are available:
+## التصميم المعتمد
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+تلتزم جميع الصفحات بـ[نظام التصميم](../docs/design.md): الأحمر العنابي `#8F3038` والبيج `#EFE2C9` مع خلفية بيج ونص داكن.
 
-## React Compiler
+- الألوان والقواعد المشتركة: `src/index.css`.
+- العلامة والتنقل والتذييل والأيقونات: `src/components/`.
+- الرئيسية: `src/pages/Home.jsx` و`Home.css`.
+- العقارات والدخول ولوحة التحكم: `src/pages/` و`Pages.css`.
+- الهوية الظاهرة وعنوان المتصفح والأيقونة: «روافد العقارية».
+- لا تستخدم أنماطًا محلية أو ألوانًا مستقلة تناقض متغيرات التصميم.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## التشغيل والفحص
 
-## Expanding the Oxlint configuration
+```bash
+npm ci
+npm run dev
+npm run build
+npm run lint
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+التطوير على `http://localhost:5173`. عنوان الباكند الحالي في `src/services/api.js` هو `http://localhost:8080`.
+
+## الصفحات الحالية
+
+| المسار            | الحالة                                          |
+| ----------------- | ----------------------------------------------- |
+| `/`               | صفحة تعريفية، معاينة توضيحية، وفحص اتصال الخدمة |
+| `/properties`     | قائمة فعلية مع تصفية البيع والإيجار والفترة     |
+| `/properties/:id` | مواصفات العقار الفعلية                          |
+| `/login`          | دخول فعلي باستخدام HttpOnly cookies                       |
+| `/dashboard`      | إضافة وتعديل يدوي للأدمن فقط؛ حساب عادي للتصفح  |
+
+AuthProvider يستعيد الحساب من /api/auth/me. يستخدم Axios cookies مع withCredentials، وتجديدًا تلقائيًا واحدًا مع CSRF؛ لا تخزين JWT في JavaScript. الباكند يفرض صلاحيات ADMIN. نموذج الإيجار يدعم سعرًا شهريًا أو سنويًا. لا حساب أدمن افتراضي ولا نشر بائع.
+
+تطبيق التصميم لا يفعّل التحليل أو المقارنة أو المفضلة المؤجلة. تستخدم الصفحات الحالية والمستقبلية نفس الهوية والمكونات، مع مراجعة العرض على الكمبيوتر والجوال وإمكانية استخدام التنقل بلوحة المفاتيح.
+
+راجع [عقد المصادقة](../docs/api-auth.md) لترقية cookies وCSRF. اضبط VITE_API_BASE_URL عند الحاجة. شغّل npm test لفحص التجديد المتزامن.

@@ -19,6 +19,12 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ErrorResponse> handleRefresh(InvalidRefreshTokenException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                new ErrorResponse(401, "Unauthorized", ex.getMessage(), request.getRequestURI()));
+    }
+
     // -------------------------------------------------------------------------
     // 400 — Validation errors (field-level)
     // -------------------------------------------------------------------------
@@ -45,7 +51,7 @@ public class GlobalExceptionHandler {
 
         String cause = ex.getMostSpecificCause().getMessage();
         String message = (cause != null && cause.contains("Role"))
-                ? "قيمة الدور غير صالحة. يجب أن تكون BUYER أو SELLER أو ADMIN"
+                ? "التسجيل العام متاح لدور BUYER فقط"
                 : "صيغة الطلب غير صالحة";
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(

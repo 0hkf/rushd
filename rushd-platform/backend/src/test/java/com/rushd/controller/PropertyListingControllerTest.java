@@ -226,7 +226,7 @@ class PropertyListingControllerTest {
 
     @Test
     void createPropertyRemainsProtected() throws Exception {
-        mockMvc.perform(post("/api/properties")
+        mockMvc.perform(post("/api/properties").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isUnauthorized());
@@ -240,7 +240,7 @@ class PropertyListingControllerTest {
                               PropertyStatus status,
                               LocalDateTime createdAt) {
         Property property = new Property();
-        property.setSeller(seller);
+        property.setPublisher(seller);
         property.setTitle(title);
         property.setType(type);
         property.setCity(city);

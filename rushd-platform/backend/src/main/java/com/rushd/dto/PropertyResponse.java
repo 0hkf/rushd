@@ -1,6 +1,8 @@
 package com.rushd.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.rushd.entity.ListingType;
+import com.rushd.entity.RentalPeriod;
 import com.rushd.entity.PropertyFacade;
 import com.rushd.entity.PropertyPurpose;
 import com.rushd.entity.PropertyStatus;
@@ -13,11 +15,13 @@ public class PropertyResponse {
 
     private final Long id;
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private final SellerSummaryResponse seller;
-    private final Long sellerId;
-    private final String sellerName;
+    private final PublisherSummaryResponse publisher;
+    private final Long publisherId;
+    private final String publisherName;
     private final String title;
     private final PropertyType type;
+    private final ListingType listingType;
+    private final RentalPeriod rentalPeriod;
     private final String city;
     private final String district;
     private final String googlePlaceId;
@@ -36,8 +40,8 @@ public class PropertyResponse {
     private final LocalDateTime updatedAt;
 
     public PropertyResponse(Long id,
-                            Long sellerId,
-                            String sellerName,
+                            Long publisherId,
+                            String publisherName,
                             String title,
                             PropertyType type,
                             String city,
@@ -51,14 +55,14 @@ public class PropertyResponse {
                             PropertyStatus status,
                             LocalDateTime createdAt,
                             LocalDateTime updatedAt) {
-        this(id, null, sellerId, sellerName, title, type, city, district, area, price,
+        this(id, null, publisherId, publisherName, title, type, city, district, area, price,
                 streetWidth, facade, purpose, description, status, createdAt, updatedAt);
     }
 
     public PropertyResponse(Long id,
-                            SellerSummaryResponse seller,
-                            Long sellerId,
-                            String sellerName,
+                            PublisherSummaryResponse publisher,
+                            Long publisherId,
+                            String publisherName,
                             String title,
                             PropertyType type,
                             String city,
@@ -72,15 +76,15 @@ public class PropertyResponse {
                             PropertyStatus status,
                             LocalDateTime createdAt,
                             LocalDateTime updatedAt) {
-        this(id, seller, sellerId, sellerName, title, type, city, district,
-                null, null, null, null, null, area, price, streetWidth, facade,
+        this(id, publisher, publisherId, publisherName, title, type, city, district,
+                null, null, null, null, null, ListingType.SALE, null, area, price, streetWidth, facade,
                 purpose, description, status, createdAt, updatedAt);
     }
 
     public PropertyResponse(Long id,
-                            SellerSummaryResponse seller,
-                            Long sellerId,
-                            String sellerName,
+                            PublisherSummaryResponse publisher,
+                            Long publisherId,
+                            String publisherName,
                             String title,
                             PropertyType type,
                             String city,
@@ -90,6 +94,8 @@ public class PropertyResponse {
                             String neighborhood,
                             BigDecimal latitude,
                             BigDecimal longitude,
+                            ListingType listingType,
+                            RentalPeriod rentalPeriod,
                             BigDecimal area,
                             BigDecimal price,
                             BigDecimal streetWidth,
@@ -100,9 +106,9 @@ public class PropertyResponse {
                             LocalDateTime createdAt,
                             LocalDateTime updatedAt) {
         this.id = id;
-        this.seller = seller;
-        this.sellerId = sellerId;
-        this.sellerName = sellerName;
+        this.publisher = publisher;
+        this.publisherId = publisherId;
+        this.publisherName = publisherName;
         this.title = title;
         this.type = type;
         this.city = city;
@@ -112,6 +118,8 @@ public class PropertyResponse {
         this.neighborhood = neighborhood;
         this.latitude = latitude;
         this.longitude = longitude;
+        this.listingType = listingType;
+        this.rentalPeriod = rentalPeriod;
         this.area = area;
         this.price = price;
         this.streetWidth = streetWidth;
@@ -127,16 +135,16 @@ public class PropertyResponse {
         return id;
     }
 
-    public SellerSummaryResponse getSeller() {
-        return seller;
+    public PublisherSummaryResponse getPublisher() {
+        return publisher;
     }
 
-    public Long getSellerId() {
-        return sellerId;
+    public Long getPublisherId() {
+        return publisherId;
     }
 
-    public String getSellerName() {
-        return sellerName;
+    public String getPublisherName() {
+        return publisherName;
     }
 
     public String getTitle() {
@@ -173,6 +181,14 @@ public class PropertyResponse {
 
     public BigDecimal getLongitude() {
         return longitude;
+    }
+
+    public ListingType getListingType() {
+        return listingType;
+    }
+
+    public RentalPeriod getRentalPeriod() {
+        return rentalPeriod;
     }
 
     public BigDecimal getArea() {

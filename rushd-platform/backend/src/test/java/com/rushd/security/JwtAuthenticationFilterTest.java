@@ -53,7 +53,7 @@ class JwtAuthenticationFilterTest {
     }
 
     private String validToken() {
-        return jwtService.generateToken("test@rushd.com", "BUYER");
+        return jwtService.generateAccessToken("test@rushd.com");
     }
 
     // -------------------------------------------------------------------------
@@ -63,7 +63,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void registerEndpointIsPublic() throws Exception {
         // Empty body → 400 validation, NOT 401
-        mockMvc.perform(post("/api/auth/register")
+        mockMvc.perform(post("/api/auth/register").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -72,7 +72,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void loginEndpointIsPublic() throws Exception {
         // Empty body → 400 validation, NOT 401
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/auth/login").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -90,7 +90,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void registerWithInvalidBodyReturns400WithFieldErrors() throws Exception {
-        mockMvc.perform(post("/api/auth/register")
+        mockMvc.perform(post("/api/auth/register").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -107,7 +107,7 @@ class JwtAuthenticationFilterTest {
     void duplicateEmailReturns409() throws Exception {
         when(userRepository.existsByEmail("buyer@rushd.local")).thenReturn(true);
 
-        mockMvc.perform(post("/api/auth/register")
+        mockMvc.perform(post("/api/auth/register").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Buyer\",\"email\":\"buyer@rushd.local\",\"password\":\"Buyer123\",\"role\":\"BUYER\"}"))
                 .andExpect(status().isConflict())
@@ -138,7 +138,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void invalidTokenReturns401() throws Exception {
         mockMvc.perform(get("/api/protected-example")
-                .header("Authorization", "Bearer this.is.not.a.valid.jwt"))
+                .cookie(new jakarta.servlet.http.Cookie(com.rushd.service.AuthCookieService.ACCESS, "this.is.not.a.valid.jwt")))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -152,7 +152,7 @@ class JwtAuthenticationFilterTest {
                 .thenReturn(Optional.of(buildUser()));
 
         mockMvc.perform(get("/api/protected-example")
-                .header("Authorization", "Bearer " + validToken()))
+                .cookie(new jakarta.servlet.http.Cookie(com.rushd.service.AuthCookieService.ACCESS, validToken())))
                 .andExpect(status().isNotFound());
     }
 
@@ -175,7 +175,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void meWithInvalidTokenReturns401() throws Exception {
         mockMvc.perform(get("/api/auth/me")
-                .header("Authorization", "Bearer bad.token.value"))
+                .cookie(new jakarta.servlet.http.Cookie(com.rushd.service.AuthCookieService.ACCESS, "bad.token.value")))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -189,7 +189,7 @@ class JwtAuthenticationFilterTest {
                 .thenReturn(Optional.of(buildUser()));
 
         mockMvc.perform(get("/api/auth/me")
-                .header("Authorization", "Bearer " + validToken()))
+                .cookie(new jakarta.servlet.http.Cookie(com.rushd.service.AuthCookieService.ACCESS, validToken())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("test@rushd.com"))
                 .andExpect(jsonPath("$.name").value("Test User"))
@@ -204,13 +204,13 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void extractUsernameReturnsCorrectEmail() {
-        String token = jwtService.generateToken("user@example.com", "SELLER");
-        assert "user@example.com".equals(jwtService.extractUsername(token));
+        String token = jwtService.generateAccessToken("user@example.com");
+        assert "user@example.com".equals(jwtService.validateAccessToken(token).getSubject());
     }
 
     @Test
     void freshTokenIsNotExpired() {
-        String token = jwtService.generateToken("user@example.com", "SELLER");
-        assert !jwtService.isTokenExpired(token);
+        String token = jwtService.generateAccessToken("user@example.com");
+        assert jwtService.validateAccessToken(token).getExpiration().toInstant().isAfter(java.time.Instant.now());
     }
 }

@@ -1,12 +1,8 @@
 package com.rushd.config;
 
-import com.rushd.security.JwtAuthenticationFilter;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import com.rushd.security.*;
+import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -14,87 +10,59 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.LinkedHashMap;
+import org.springframework.security.web.csrf.*;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.web.cors.*;
 import java.util.List;
-import java.util.Map;
 
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
-
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter authentication;
+    private final AuthProperties settings;
+    private final SecurityErrorWriter errors;
+    public SecurityConfig(JwtAuthenticationFilter authentication, AuthProperties settings, SecurityErrorWriter errors) {
+        this.authentication = authentication; this.settings = settings; this.errors = errors;
     }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    @Bean public org.springframework.security.authentication.AuthenticationManager authenticationManager(
+            org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+    @Bean public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+    @Bean public CsrfTokenRepository csrfTokenRepository() {
+        var repository = new CookieCsrfTokenRepository();
+        repository.setCookieCustomizer(builder -> builder.httpOnly(true).secure(settings.cookieSecure())
+                .sameSite(settings.cookieSameSite()).path("/"));
+        return repository;
+    }
+    @Bean public CorsConfigurationSource corsConfigurationSource() {
+        var config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of(settings.frontendOrigin()));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Content-Type", "X-XSRF-TOKEN"));
         config.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
+        var source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config); return source;
     }
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/health").permitAll()
-                        .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/properties", "/api/properties/{id}").permitAll()
-                        .anyRequest().authenticated()
-                )
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            Map<String, Object> body = new LinkedHashMap<>();
-                            body.put("timestamp", java.time.Instant.now().toString());
-                            body.put("status", HttpStatus.UNAUTHORIZED.value());
-                            body.put("error", "Unauthorized");
-                            body.put("message", "Authentication is required");
-                            body.put("path", request.getRequestURI());
-
-                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter().write(objectMapper.writeValueAsString(body));
-                        })
-                        .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            Map<String, Object> body = new LinkedHashMap<>();
-                            body.put("timestamp", java.time.Instant.now().toString());
-                            body.put("status", HttpStatus.FORBIDDEN.value());
-                            body.put("error", "Forbidden");
-                            body.put("message", "Only sellers can create properties");
-                            body.put("path", request.getRequestURI());
-
-                            response.setStatus(HttpStatus.FORBIDDEN.value());
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter().write(objectMapper.writeValueAsString(body));
-                        })
-                )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .httpBasic(basic -> basic.disable())
-                .formLogin(form -> form.disable());
-
+    @Bean public SecurityFilterChain securityFilterChain(HttpSecurity http, CsrfTokenRepository csrf, AuthRateLimitFilter rateLimit) throws Exception {
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(config -> config.csrfTokenRepository(csrf))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/health", "/api/auth/csrf", "/api/auth/register", "/api/auth/login",
+                            "/api/auth/refresh", "/api/auth/logout").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/properties", "/api/properties/{id}").permitAll()
+                    .anyRequest().authenticated())
+            .exceptionHandling(config -> config
+                    .authenticationEntryPoint((request, response, exception) -> errors.write(request, response, 401, "Authentication is required"))
+                    .accessDeniedHandler((request, response, exception) -> errors.write(request, response, 403, exception instanceof CsrfException ? "Invalid CSRF token" : "Insufficient permission")))
+            .headers(headers -> headers
+                    .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'; base-uri 'none'"))
+                    .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                    .frameOptions(frame -> frame.deny()))
+            .addFilterBefore(authentication, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(rateLimit, JwtAuthenticationFilter.class)
+            .httpBasic(basic -> basic.disable()).formLogin(form -> form.disable()).logout(logout -> logout.disable());
         return http.build();
     }
 }

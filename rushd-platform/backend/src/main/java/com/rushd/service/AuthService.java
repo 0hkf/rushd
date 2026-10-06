@@ -1,34 +1,42 @@
 package com.rushd.service;
 
-import com.rushd.dto.AuthResponse;
 import com.rushd.dto.LoginRequest;
 import com.rushd.dto.RegisterRequest;
 import com.rushd.dto.UserResponse;
 import com.rushd.entity.User;
+import com.rushd.entity.Role;
+import org.springframework.security.access.AccessDeniedException;
 import com.rushd.exception.EmailAlreadyExistsException;
 import com.rushd.exception.InvalidCredentialsException;
 import com.rushd.exception.UserNotFoundException;
 import com.rushd.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
+import java.util.Locale;
 
 @Service
 public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtService jwtService) {
+                       AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
+        this.authenticationManager = authenticationManager;
     }
 
     public UserResponse register(RegisterRequest request) {
-        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        if (request.getRole() != Role.BUYER) {
+            throw new AccessDeniedException("Public registration is only available for regular users");
+        }
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new EmailAlreadyExistsException(normalizedEmail);
         }
@@ -42,17 +50,16 @@ public class AuthService {
         return UserResponse.from(userRepository.save(user));
     }
 
-    public AuthResponse login(LoginRequest request) {
-        String normalizedEmail = request.getEmail().trim().toLowerCase();
-        User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(InvalidCredentialsException::new);
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+    public User authenticate(LoginRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            normalizedEmail, request.getPassword()));
+        } catch (AuthenticationException invalid) {
             throw new InvalidCredentialsException();
         }
-
-        String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
-        return new AuthResponse(token, jwtService.getExpirationTime(), UserResponse.from(user));
+        return userRepository.findByEmail(normalizedEmail).orElseThrow(InvalidCredentialsException::new);
     }
 
     public UserResponse me(String email) {

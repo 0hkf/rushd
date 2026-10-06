@@ -2,7 +2,7 @@ package com.rushd.mapper;
 
 import com.rushd.dto.CreatePropertyRequest;
 import com.rushd.dto.PropertyResponse;
-import com.rushd.dto.SellerSummaryResponse;
+import com.rushd.dto.PublisherSummaryResponse;
 import com.rushd.dto.UpdatePropertyRequest;
 import com.rushd.entity.Property;
 import com.rushd.entity.PropertyFacade;
@@ -41,6 +41,8 @@ public final class PropertyMapper {
                 request.getDescription(),
                 request.getStatus() == null ? PropertyStatus.ACTIVE : request.getStatus()
         );
+        property.setListingType(request.getListingType());
+        property.setRentalPeriod(request.getRentalPeriod());
     }
 
     public static void applyUpdateRequest(Property property, UpdatePropertyRequest request) {
@@ -63,25 +65,27 @@ public final class PropertyMapper {
                 request.getDescription(),
                 request.getStatus()
         );
+        property.setListingType(request.getListingType());
+        property.setRentalPeriod(request.getRentalPeriod());
     }
 
     public static PropertyResponse toDetailsResponse(Property property) {
-        SellerSummaryResponse seller = new SellerSummaryResponse(
-                property.getSeller().getId(),
-                property.getSeller().getName(),
-                property.getSeller().getRole()
+        PublisherSummaryResponse publisher = new PublisherSummaryResponse(
+                property.getPublisher().getId(),
+                property.getPublisher().getName(),
+                property.getPublisher().getRole()
         );
-        return toResponse(property, seller);
+        return toResponse(property, publisher);
     }
 
     private static PropertyResponse toResponse(
             Property property,
-            SellerSummaryResponse seller) {
+            PublisherSummaryResponse publisher) {
         return new PropertyResponse(
                 property.getId(),
-                seller,
-                property.getSeller().getId(),
-                property.getSeller().getName(),
+                publisher,
+                property.getPublisher().getId(),
+                property.getPublisher().getName(),
                 property.getTitle(),
                 property.getType(),
                 property.getCity(),
@@ -91,6 +95,8 @@ public final class PropertyMapper {
                 property.getNeighborhood(),
                 property.getLatitude(),
                 property.getLongitude(),
+                property.getListingType(),
+                property.getRentalPeriod(),
                 property.getArea(),
                 property.getPrice(),
                 property.getStreetWidth(),

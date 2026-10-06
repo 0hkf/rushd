@@ -8,6 +8,6 @@ public class HealthController {
 
     @GetMapping("/health")
     public String health() {
-        return "Rushd API is running";
+        return "Rawafed Real Estate API is running";
     }
 }

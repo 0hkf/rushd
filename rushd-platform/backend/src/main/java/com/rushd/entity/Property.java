@@ -26,7 +26,7 @@ public class Property {
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seller_id", nullable = false)
-    private User seller;
+    private User publisher;
 
     @Column(nullable = false)
     private String title;
@@ -34,6 +34,14 @@ public class Property {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PropertyType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "listing_type", nullable = false, length = 10)
+    private ListingType listingType = ListingType.SALE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rental_period", length = 10)
+    private RentalPeriod rentalPeriod;
 
     @Column(nullable = false)
     private String city;
@@ -89,6 +97,9 @@ public class Property {
         if (this.status == null) {
             this.status = PropertyStatus.ACTIVE;
         }
+        if (this.listingType == null) {
+            this.listingType = ListingType.SALE;
+        }
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -106,12 +117,12 @@ public class Property {
         this.id = id;
     }
 
-    public User getSeller() {
-        return seller;
+    public User getPublisher() {
+        return publisher;
     }
 
-    public void setSeller(User seller) {
-        this.seller = seller;
+    public void setPublisher(User publisher) {
+        this.publisher = publisher;
     }
 
     public String getTitle() {
@@ -128,6 +139,22 @@ public class Property {
 
     public void setType(PropertyType type) {
         this.type = type;
+    }
+
+    public ListingType getListingType() {
+        return listingType == null ? ListingType.SALE : listingType;
+    }
+
+    public void setListingType(ListingType listingType) {
+        this.listingType = listingType;
+    }
+
+    public RentalPeriod getRentalPeriod() {
+        return rentalPeriod;
+    }
+
+    public void setRentalPeriod(RentalPeriod rentalPeriod) {
+        this.rentalPeriod = rentalPeriod;
     }
 
     public String getCity() {

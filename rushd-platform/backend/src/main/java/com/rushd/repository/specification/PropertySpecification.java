@@ -3,6 +3,8 @@ package com.rushd.repository.specification;
 import com.rushd.entity.Property;
 import com.rushd.entity.PropertyStatus;
 import com.rushd.entity.PropertyType;
+import com.rushd.entity.ListingType;
+import com.rushd.entity.RentalPeriod;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -20,6 +22,8 @@ public final class PropertySpecification {
             String city,
             String district,
             PropertyType type,
+            ListingType listingType,
+            RentalPeriod rentalPeriod,
             BigDecimal minPrice,
             BigDecimal maxPrice) {
         return (root, query, criteriaBuilder) -> {
@@ -38,6 +42,12 @@ public final class PropertySpecification {
             }
             if (type != null) {
                 predicates.add(criteriaBuilder.equal(root.get("type"), type));
+            }
+            if (listingType != null) {
+                predicates.add(criteriaBuilder.equal(root.get("listingType"), listingType));
+            }
+            if (rentalPeriod != null) {
+                predicates.add(criteriaBuilder.equal(root.get("rentalPeriod"), rentalPeriod));
             }
             if (minPrice != null) {
                 predicates.add(criteriaBuilder.greaterThanOrEqualTo(

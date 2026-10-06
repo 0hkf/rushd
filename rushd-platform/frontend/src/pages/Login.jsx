@@ -1,73 +1,105 @@
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import Icon from '../components/Icon'
+import { BrandMark } from '../components/Brand'
+import { useAuth } from '../services/authState'
+import { errorMessage } from '../services/property'
+
 function Login() {
+  const { user, login } = useAuth()
+  const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  async function submit(event) {
+    event.preventDefault()
+    setError('')
+    setBusy(true)
+    try {
+      await login(email, password)
+      navigate('/dashboard')
+    } catch (error) {
+      setError(errorMessage(error))
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
-    <div className="page" dir="rtl" style={{ maxWidth: '420px', margin: '4rem auto', padding: '0 1rem' }}>
-      <h1 style={{ color: '#1a1a2e', marginBottom: '0.5rem' }}>تسجيل الدخول</h1>
-      <p style={{ color: '#666', marginBottom: '2rem' }}>أدخل بياناتك للوصول إلى حسابك</p>
-
-      <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div>
-          <label style={{ display: 'block', marginBottom: '0.35rem', color: '#444', fontWeight: '500' }}>
-            البريد الإلكتروني
-          </label>
-          <input
-            type="email"
-            placeholder="example@email.com"
-            disabled
-            style={{
-              width: '100%',
-              padding: '0.65rem 0.9rem',
-              borderRadius: '6px',
-              border: '1px solid #ddd',
-              fontSize: '0.95rem',
-              boxSizing: 'border-box',
-            }}
-          />
-        </div>
-
-        <div>
-          <label style={{ display: 'block', marginBottom: '0.35rem', color: '#444', fontWeight: '500' }}>
-            كلمة المرور
-          </label>
-          <input
-            type="password"
-            placeholder="••••••••"
-            disabled
-            style={{
-              width: '100%',
-              padding: '0.65rem 0.9rem',
-              borderRadius: '6px',
-              border: '1px solid #ddd',
-              fontSize: '0.95rem',
-              boxSizing: 'border-box',
-            }}
-          />
-        </div>
-
-        <button
-          type="button"
-          disabled
-          style={{
-            backgroundColor: '#e2b96f',
-            color: '#1a1a2e',
-            border: 'none',
-            padding: '0.75rem',
-            borderRadius: '6px',
-            fontSize: '1rem',
-            fontWeight: '600',
-            cursor: 'not-allowed',
-            opacity: 0.7,
-            marginTop: '0.5rem',
-          }}
-        >
-          دخول
-        </button>
-
-        <p style={{ textAlign: 'center', color: '#888', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-          🔒 تسجيل الدخول غير متاح حالياً — قيد التطوير
-        </p>
-      </form>
+    <div className="page container">
+      <div className="login-grid">
+        <section className="login-intro panel panel-red">
+          <span className="eyebrow">روافد العقارية</span>
+          <BrandMark className="login-mark" />
+          <h1>
+            للبيع أو للإيجار.
+            <br />
+            خيارات أوضح.
+          </h1>
+          <p>الأدمن يضيف مواصفات العقارات ويتولى إدارة نشرها. استكشف العروض واختر ما يناسبك.</p>
+          <Link to="/properties" className="button button-outline">
+            استكشف العقارات <Icon name="arrow" />
+          </Link>
+        </section>
+        <section className="login-form-panel panel panel-beige" aria-labelledby="login-title">
+          <span className="icon-box">
+            <Icon name="lock" />
+          </span>
+          <h2 id="login-title">أهلًا بعودتك</h2>
+          <p className="login-subtitle">تسجيل الدخول إلى روافد العقارية</p>
+          {user ? (
+            <>
+              <p>أنت مسجل باسم {user.name}.</p>
+              <Link to="/dashboard" className="button button-red">
+                الذهاب إلى لوحة التحكم
+              </Link>
+            </>
+          ) : (
+            <form onSubmit={submit}>
+              <div className="form-field">
+                <label htmlFor="email">البريد الإلكتروني</label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="example@email.com"
+                  autoComplete="email"
+                  dir="ltr"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={busy}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="password">كلمة المرور</label>
+                <input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={busy}
+                />
+              </div>
+              {error && (
+                <p className="feedback feedback-error" role="alert">
+                  {error}
+                </p>
+              )}
+              <button className="button button-red button-wide" type="submit" disabled={busy}>
+                {busy ? 'جارٍ تسجيل الدخول…' : 'تسجيل الدخول'}
+                <Icon name="arrow" />
+              </button>
+              <p className="form-note">
+                <Icon name="info" />
+                نشر العقارات متاح لحسابات الأدمن المعتمدة فقط.
+              </p>
+            </form>
+          )}
+        </section>
+      </div>
     </div>
   )
 }
-
 export default Login

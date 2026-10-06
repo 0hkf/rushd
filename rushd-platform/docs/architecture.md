@@ -1,8 +1,8 @@
-# معمارية مشروع رُشد
+# معمارية مشروع روافد العقارية
 
 ## نظرة عامة
 
-رُشد منصة ويب مكوّنة من ثلاث طبقات رئيسية:
+روافد العقارية منصة ويب مكوّنة من ثلاث طبقات رئيسية:
 
 | الطبقة | التقنية | المنفذ |
 |--------|---------|--------|
@@ -36,10 +36,10 @@ PostgreSQL (localhost:5432)
 
 ## طبقة الواجهة الأمامية — React
 
-- **التقنية:** React 18 + Vite
+- **التقنية:** React 19 + Vite
 - **المنفذ:** `http://localhost:5173`
 - **مكتبة HTTP:** Axios — ملف الإعداد: `frontend/src/services/api.js`
-- **التوجيه:** React Router v6
+- **التوجيه:** React Router v7
 
 ### الصفحات
 
@@ -49,6 +49,7 @@ PostgreSQL (localhost:5432)
 | تسجيل الدخول | `/login` |
 | العقارات | `/properties` |
 | لوحة التحكم | `/dashboard` |
+| مواصفات العقار | `/properties/:id` |
 
 ---
 
@@ -62,7 +63,21 @@ PostgreSQL (localhost:5432)
 
 | الطريقة | المسار | الوصف |
 |---------|--------|-------|
-| `GET` | `/health` | فحص حالة الخادم — يعيد `Rushd API is running` |
+| `GET` | `/health` | فحص حالة الخادم — يعيد `Rawafed Real Estate API is running` |
+| `POST` | `/api/auth/register` | تسجيل مستخدم |
+| `POST` | `/api/auth/login` | الدخول وإصدار HttpOnly cookies |
+| `GET` | `/api/auth/me` | المستخدم الحالي |
+| `GET` | `/api/properties` | قائمة عامة مع مرشحات البيع والإيجار |
+| `GET` | `/api/admin/properties` | قائمة جميع حالات النشر للأدمن فقط |
+| `GET` | `/api/properties/{id}` | تفاصيل العقار |
+| `POST` | `/api/properties` | إنشاء عرض بيع/إيجار بواسطة ADMIN فقط |
+| `PUT` | `/api/properties/{id}` | تعديل بواسطة ADMIN فقط |
+
+### النموذج والأمان
+
+الإدخال يدوي بواسطة الأدمن. التسجيل العام BUYER فقط. تبقى SELLER قيمة تراثية دون صلاحية نشر. السعر للإيجار مرتبط بفترة MONTHLY أو YEARLY. لا اتصالات Google أو خرائط أو صور ضمن هذا النطاق.
+
+تفاصيل الحقول وترقية PostgreSQL في [api-properties.md](api-properties.md). إعداد ddl-auto هو none؛ يجب تطبيق الترقية المعتمدة قبل تشغيل التطبيق على قاعدة قديمة.
 
 ### إعداد CORS
 
@@ -92,12 +107,12 @@ GET http://localhost:8080/health
 
 **الاستجابة:**
 ```
-Rushd API is running
+Rawafed Real Estate API is running
 ```
 
-تعرض الصفحة الرئيسية هذه الاستجابة مباشرةً عند التحميل:
-- ✅ الخادم يعمل — يعرض النص المُعاد
-- ⚠️ الخادم متوقف — يعرض رسالة خطأ عربية
+تتحقق الصفحة الرئيسية من الاتصال عند التحميل، وتعرض حالة عربية مختصرة بدل النص التقني: «الخدمة متصلة» أو «الخدمة غير متاحة حاليًا».
+
+تلتزم جميع صفحات الواجهة بـ[نظام التصميم المعتمد](design.md). الألوان والمكونات المشتركة معرفة في `frontend/src/index.css`، وتستخدم الهوية الظاهرة «روافد العقارية».
 
 ---
 
@@ -128,7 +143,7 @@ npm run dev
 
 ```bash
 curl http://localhost:8080/health
-# المتوقع: Rushd API is running
+# المتوقع: Rawafed Real Estate API is running
 ```
 
 ثم افتح `http://localhost:5173` — الصفحة الرئيسية ستعرض حالة الاتصال تلقائياً.
