@@ -1,15 +1,16 @@
 package com.rushd.config;
 
 import com.rushd.security.*;
+import com.rushd.images.ImageUploadGuard;
 import org.springframework.context.annotation.*;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.csrf.*;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
@@ -29,7 +30,7 @@ public class SecurityConfig {
             org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
-    @Bean public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+    @Bean public PasswordEncoder passwordEncoder() { return new BoundedBCryptPasswordEncoder(); }
     @Bean public CsrfTokenRepository csrfTokenRepository() {
         var repository = new CookieCsrfTokenRepository();
         repository.setCookieCustomizer(builder -> builder.httpOnly(true).secure(settings.cookieSecure())
@@ -45,17 +46,22 @@ public class SecurityConfig {
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config); return source;
     }
-    @Bean public SecurityFilterChain securityFilterChain(HttpSecurity http, CsrfTokenRepository csrf, AuthRateLimitFilter rateLimit) throws Exception {
+    @Bean public SecurityFilterChain securityFilterChain(HttpSecurity http, CsrfTokenRepository csrf, AuthRateLimitFilter rateLimit, ImageUploadGuard imageGuard) throws Exception {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
             // JWT authentication is reconstructed on every request, not a fresh login.
             // AuthController explicitly rotates CSRF at login, refresh, and logout.
             .csrf(config -> config.csrfTokenRepository(csrf)
+                    .csrfTokenRequestHandler(new com.rushd.images.ImageCsrfTokenRequestHandler())
                     .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/health", "/api/auth/csrf", "/api/auth/register", "/api/auth/login",
                             "/api/auth/refresh", "/api/auth/logout").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/properties", "/api/properties/{id}").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/properties/{id}/images",
+                            "/api/properties/{id}/images/{imageId}/{variant}").permitAll()
+                    .requestMatchers("/api/admin/properties/{id}/images",
+                            "/api/admin/properties/{id}/images/{imageId}").hasRole("ADMIN")
                     .anyRequest().authenticated())
             .exceptionHandling(config -> config
                     .authenticationEntryPoint((request, response, exception) -> errors.write(request, response, 401, "Authentication is required"))
@@ -66,6 +72,7 @@ public class SecurityConfig {
                     .frameOptions(frame -> frame.deny()))
             .addFilterBefore(authentication, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(rateLimit, JwtAuthenticationFilter.class)
+            .addFilterAfter(imageGuard, AuthorizationFilter.class)
             .httpBasic(basic -> basic.disable()).formLogin(form -> form.disable()).logout(logout -> logout.disable());
         return http.build();
     }

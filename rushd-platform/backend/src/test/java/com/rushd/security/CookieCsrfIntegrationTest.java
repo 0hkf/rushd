@@ -8,6 +8,8 @@ import com.rushd.repository.UserRepository;
 import com.rushd.service.AuthCookieService;
 import com.rushd.service.JwtService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -48,17 +50,23 @@ class CookieCsrfIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
-    @Test void repeatedJwtRequestsPreserveCsrfProofButStillRejectMissingOrWrongProof() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/property-needs/validate", "/api/property-needs/matches"})
+    void repeatedJwtRequestsPreserveCsrfProofButStillRejectMissingOrWrongProof(String endpoint) throws Exception {
         User user = createUser("repeat-csrf@example.com");
         Cookie access = new Cookie(AuthCookieService.ACCESS, jwt.generateAccessToken(user.getEmail()));
         CsrfProof proof = bootstrap();
+
+        mvc.perform(post(endpoint).cookie(proof.cookie()).header("X-XSRF-TOKEN", proof.header())
+                        .contentType(MediaType.APPLICATION_JSON).content(needsBody()))
+                .andExpect(status().isUnauthorized());
 
         MvcResult me = mvc.perform(get("/api/auth/me").cookie(access, proof.cookie()))
                 .andExpect(status().isOk()).andReturn();
         assertNull(me.getResponse().getCookie("XSRF-TOKEN"), "ordinary JWT GET must not delete the CSRF cookie");
 
         for (int i = 0; i < 2; i++) {
-            MvcResult validated = mvc.perform(post("/api/property-needs/validate")
+            MvcResult validated = mvc.perform(post(endpoint)
                             .cookie(access, proof.cookie()).header("X-XSRF-TOKEN", proof.header())
                             .contentType(MediaType.APPLICATION_JSON).content(needsBody()))
                     .andExpect(status().isOk()).andReturn();
@@ -66,13 +74,13 @@ class CookieCsrfIntegrationTest {
                     "ordinary JWT POST must leave the existing cookie and cached proof usable");
         }
 
-        mvc.perform(post("/api/property-needs/validate").cookie(access, proof.cookie())
+        mvc.perform(post(endpoint).cookie(access, proof.cookie())
                         .header("X-XSRF-TOKEN", "wrong").contentType(MediaType.APPLICATION_JSON).content(needsBody()))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.message").value("Invalid CSRF token"));
-        mvc.perform(post("/api/property-needs/validate").cookie(access, proof.cookie())
+        mvc.perform(post(endpoint).cookie(access, proof.cookie())
                         .contentType(MediaType.APPLICATION_JSON).content(needsBody()))
                 .andExpect(status().isForbidden());
-        mvc.perform(post("/api/property-needs/validate").cookie(access)
+        mvc.perform(post(endpoint).cookie(access)
                         .header("X-XSRF-TOKEN", proof.header()).contentType(MediaType.APPLICATION_JSON).content(needsBody()))
                 .andExpect(status().isForbidden());
     }

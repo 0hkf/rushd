@@ -1,6 +1,11 @@
 package com.rushd.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.rushd.dto.deserialization.StrictStringEnumDeserializer;
+import jakarta.validation.Valid;
 import com.rushd.entity.ListingType;
 import com.rushd.entity.RentalPeriod;
 import jakarta.validation.constraints.AssertTrue;
@@ -8,6 +13,7 @@ import com.rushd.entity.PropertyFacade;
 import com.rushd.entity.PropertyPurpose;
 import com.rushd.entity.PropertyStatus;
 import com.rushd.entity.PropertyType;
+import com.rushd.validation.SafeDecimalPrecision;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -19,16 +25,27 @@ import java.math.BigDecimal;
 
 public class CreatePropertyRequest {
 
+    @Valid
+    private PropertySpecificationsRequest specifications;
+
+    public PropertySpecificationsRequest getSpecifications() { return specifications; }
+
+    @JsonSetter(nulls = Nulls.FAIL)
+    public void setSpecifications(PropertySpecificationsRequest specifications) { this.specifications = specifications; }
+
     @NotBlank(message = "العنوان مطلوب")
     @Size(max = 150, message = "العنوان يجب ألا يتجاوز 150 حرفاً")
     private String title;
 
     @NotNull(message = "نوع العقار مطلوب")
+    @JsonDeserialize(using = StrictStringEnumDeserializer.class)
     private PropertyType type;
 
     @NotNull(message = "نوع العرض مطلوب")
+    @JsonDeserialize(using = StrictStringEnumDeserializer.class)
     private ListingType listingType = ListingType.SALE;
 
+    @JsonDeserialize(using = StrictStringEnumDeserializer.class)
     private RentalPeriod rentalPeriod;
 
     @JsonIgnore
@@ -38,6 +55,12 @@ public class CreatePropertyRequest {
             return true;
         }
         return listingType == ListingType.RENT ? rentalPeriod != null : rentalPeriod == null;
+    }
+
+    @JsonIgnore
+    @AssertTrue(message = "حالة مباع لعروض البيع فقط. اختر حالة مناسبة للإيجار قبل الحفظ.")
+    public boolean isListingStatusValid() {
+        return listingType != ListingType.RENT || status != PropertyStatus.SOLD;
     }
 
     public ListingType getListingType() {
@@ -75,31 +98,45 @@ public class CreatePropertyRequest {
 
     @DecimalMin(value = "-90", message = "خط العرض يجب ألا يقل عن -90")
     @DecimalMax(value = "90", message = "خط العرض يجب ألا يزيد عن 90")
+    @SafeDecimalPrecision(integer = 3, fraction = 7, message = "خط العرض يقبل حتى 7 منازل عشرية و3 خانات صحيحة")
     private BigDecimal latitude;
 
     @DecimalMin(value = "-180", message = "خط الطول يجب ألا يقل عن -180")
     @DecimalMax(value = "180", message = "خط الطول يجب ألا يزيد عن 180")
+    @SafeDecimalPrecision(integer = 3, fraction = 7, message = "خط الطول يقبل حتى 7 منازل عشرية و3 خانات صحيحة")
     private BigDecimal longitude;
 
     @NotNull(message = "المساحة مطلوبة")
     @Positive(message = "المساحة يجب أن تكون أكبر من صفر")
+    @DecimalMin(value = "0.01", message = "المساحة يجب ألا تقل عن 0.01 متر مربع")
+    @DecimalMax(value = "9999999999.99", message = "المساحة تتجاوز الحد المسموح")
+    @SafeDecimalPrecision(integer = 10, fraction = 2, message = "المساحة تقبل حتى 10 خانات صحيحة ومنزلتين عشريتين")
     private BigDecimal area;
 
     @NotNull(message = "السعر مطلوب")
     @Positive(message = "السعر يجب أن يكون أكبر من صفر")
+    @DecimalMin(value = "0.01", message = "السعر يجب ألا يقل عن 0.01 ريال")
+    @DecimalMax(value = "99999999999999999.99", message = "السعر يتجاوز الحد المسموح")
+    @SafeDecimalPrecision(integer = 17, fraction = 2, message = "السعر يقبل حتى 17 خانة صحيحة ومنزلتين عشريتين")
     private BigDecimal price;
 
     @Positive(message = "عرض الشارع يجب أن يكون أكبر من صفر")
+    @DecimalMin(value = "0.01", message = "عرض الشارع يجب ألا يقل عن 0.01 متر")
+    @DecimalMax(value = "99999999.99", message = "عرض الشارع يتجاوز الحد المسموح")
+    @SafeDecimalPrecision(integer = 8, fraction = 2, message = "عرض الشارع يقبل حتى 8 خانات صحيحة ومنزلتين عشريتين")
     private BigDecimal streetWidth;
 
+    @JsonDeserialize(using = StrictStringEnumDeserializer.class)
     private PropertyFacade facade;
 
     @NotNull(message = "غرض العقار مطلوب")
+    @JsonDeserialize(using = StrictStringEnumDeserializer.class)
     private PropertyPurpose purpose;
 
     @Size(max = 3000, message = "الوصف يجب ألا يتجاوز 3000 حرف")
     private String description;
 
+    @JsonDeserialize(using = StrictStringEnumDeserializer.class)
     private PropertyStatus status;
 
     public String getTitle() {

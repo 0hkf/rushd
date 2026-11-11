@@ -38,7 +38,9 @@ public class PropertyNeedsValidator implements ConstraintValidator<ConsistentPro
             violation(context, "maxArea", "الحد الأعلى للمساحة يجب ألا يقل عن الحد الأدنى");
             valid = false;
         }
-        return valid;
+        var advancedErrors = PropertyMatchingFields.errors(request);
+        advancedErrors.forEach((field, message) -> violation(context, field, message));
+        return valid && advancedErrors.isEmpty();
     }
 
     private void violation(ConstraintValidatorContext context, String field, String message) {

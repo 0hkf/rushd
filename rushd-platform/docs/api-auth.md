@@ -21,7 +21,7 @@ Refresh credentials are 32 random bytes, base64url encoded with the r1. type pre
 | Method | Path | Contract |
 |---|---|---|
 | GET | /api/auth/csrf | Public CSRF bootstrap; returns token and headerName, sets HttpOnly XSRF-TOKEN cookie |
-| POST | /api/auth/register | Public, CSRF required; BUYER only, existing validation; 201 user response |
+| POST | /api/auth/register | Public, CSRF required; textual BUYER only; required name/email max255, password min6 characters/max72 UTF-8 bytes; 201 user response |
 | POST | /api/auth/login | Public, CSRF required; Spring AuthenticationManager + BCrypt; 200 {user}, sets both auth cookies |
 | POST | /api/auth/refresh | Public at security routing layer, CSRF and valid refresh cookie required; rotates, sets both cookies, 200 {user} |
 | POST | /api/auth/logout | Public routing, CSRF required; revoke family if present, expire cookies, idempotent 204 |
@@ -66,13 +66,15 @@ Responses use timestamp,status,error,message,path.
 - 400: invalid request/validation.
 - 401: missing/invalid/expired access, invalid/expired/consumed refresh, wrong login.
 - 403: valid authentication without permission OR invalid/missing CSRF. CSRF checking can reject an unsafe anonymous request before authentication; with valid CSRF, missing auth is 401.
+- 405: unsupported HTTP method; includes the framework's Allow header.
+- 415: unsupported request content type.
 - 409: duplicate registration email.
 - 429: temporary authentication rate limit; Retry-After supplied.
 No stack trace or cryptographic details are returned.
 
 ## Deployment and upgrade checklist
 
-1. Review/back up and manually apply [20261006-auth-token-lifecycle.sql](../backend/db/20261006-auth-token-lifecycle.sql). No migration was automatically run against an actual database.
+1. For an existing legacy schema, review/back up and manually apply [20261006-auth-token-lifecycle.sql](../backend/db/20261006-auth-token-lifecycle.sql). For an empty database only, use the reviewed [empty-database baseline](../backend/db/20261013-empty-database-baseline.sql), which already includes these tables and constraints; do not run this auth upgrade after it. The baseline was manually applied to the local development database with explicit approval; see [local setup](local-development-setup.md). No migration runs automatically at startup.
 2. Supply a high-entropy JWT_SECRET of at least 32 UTF-8 bytes from environment/secret management. There is no development fallback and no weak-key padding; startup fails for missing/short keys. Do not reuse test secrets.
 3. Set FRONTEND_ORIGIN to the exact frontend origin. Set VITE_API_BASE_URL at frontend build time.
 4. Serve both sites over HTTPS, keep AUTH_COOKIE_SECURE=true, explicitly select AUTH_COOKIE_SAME_SITE. Cross-site deployments require None + Secure and remain subject to browser third-party-cookie restrictions; same-site deployment is preferable.
@@ -82,6 +84,7 @@ No stack trace or cryptographic details are returned.
 ## Rate limiting and production hardening
 
 The bounded in-process fixed-window limiter defaults to 10 login and 30 refresh requests per client address per minute, max 10000 address/endpoint keys. Counts expire, no permanent account lockout; full capacity fails closed. Typed security.auth.rate-limit configuration is adjustable.
+Registration has a separate bounded in-process quota and capacity, defaulting to five POST requests per remote address in one minute, with 10000 address entries. The sixth request receives 429 and `Retry-After: 60`; requests with malformed or invalid bodies count if they pass the preceding CSRF filter. Requests rejected by CSRF before the rate-limit filter do not count. Registration does not consume login/refresh quotas or their storage capacity. Defaults can be configured with `security.auth.registration-rate-limit.requests`, `window`, and `max-clients`; test-only configuration permits more requests to avoid sharing a low quota across unrelated tests.
 Only request.getRemoteAddr is used; arbitrary forwarded headers are NOT trusted. Rate-limit filters run only in the security chain, not double-registered servlet filters.
 For multiple instances or a reverse proxy, a trusted gateway/WAF with shared limits and correctly configured client-IP handling is a **production deployment requirement**. In-memory limits reset on restart and do not coordinate across instances; no claim of distributed brute-force protection is made.
 
@@ -92,7 +95,7 @@ Plan operational retention/cleanup for expired/revoked families; preserve consum
 
 API responses set CSP default-src 'none'; frame-ancestors 'none'; base-uri 'none', X-Frame-Options DENY, Referrer-Policy no-referrer, and Spring's nosniff/no-store defaults.
 HSTS is supplied by Spring only for secure requests. A TLS-terminating proxy must safely convey scheme from a trusted edge.
-The API CSP does not secure the separately hosted React HTML. The frontend host must apply a tailored CSP allowing its actual API origin and Tajawal font hosts; development HMR policies must not be shipped blindly to production.
+The API CSP does not secure the separately hosted React HTML. Thmanyah WOFF2 fonts are served locally with the frontend assets, not from Tajawal/Google Fonts hosts. The frontend host must apply a reviewed CSP for its actual assets/API origin; no production policy is inferred here, and development HMR policies must not be shipped blindly to production.
 Application code never logs raw credentials, password bodies or headers; JwtProperties.toString redacts the key. Gateway/proxy/APM logging must also redact Authorization, Cookie, Set-Cookie and auth request bodies.
 
 ## Verification
@@ -102,3 +105,13 @@ Frontend node tests exercise the actual centralized Axios client, single-flight 
 MockMvc/H2 tests are not a substitute for deployment-specific PostgreSQL, TLS, proxy and browser-cookie verification.
 
 Spring CSRF design reference: https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html
+
+## Approved input hardening — 25 October 2026
+
+- No global Jackson change: RegisterRequest.role and the six Create/Update property enums require exact supported string names. Numeric ordinals, numeric strings, unknown names and booleans return400. Decimal numeric/string request compatibility and the five exact decimal-string response fields are unchanged.
+- Registration rejects passwords exceeding72 UTF-8 bytes with400; login returns the usual generic401 without trying a truncated prefix. BCrypt algorithm, salt format and cost remain unchanged. Arabic/emoji can occupy multiple bytes; there is no trimming, normalization or pre-hashing.
+- Email must fit255 Java characters both as supplied and after the existing trim/Locale.ROOT lowercase normalization. Unicode lowercase may expand a character; this boundary is checked before persistence rather than allowing a500.
+- **Legacy impact:** a user whose old password exceeded72 bytes cannot submit that full password successfully. BCrypt hashes do not reveal original input length; they cannot identify all affected accounts or undo old truncation. A known72-byte prefix may still match an old truncated hash. Before public deployment, approve a secure identity-verified recovery/reset procedure for affected accounts. No account/hash was reset automatically and no self-service reset endpoint was added.
+- The application's bounded encoder is a local fail-closed mitigation, **not a dependency upgrade or a claim that all library advisories are closed**. The BOM upgrade proposal and remaining decisions are recorded in the remediation report.
+- users.email retains its unique constraint, named uq_users_email consistently with the reviewed PostgreSQL baseline. Only SQLState23505 for that constraint (or H2's corresponding backing index) maps to409; unrelated integrity failures remain server errors. No schema SQL is applied at startup or to the project database.
+- Unexpected-error logging records exception class/method only, not message/cause, request body, cookies or query strings. Existing provider/database logging also needs redaction review before production.

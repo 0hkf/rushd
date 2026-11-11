@@ -1,6 +1,8 @@
 package com.rushd.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.rushd.dto.serialization.PlainDecimalStringSerializer;
 import com.rushd.entity.ListingType;
 import com.rushd.entity.RentalPeriod;
 import com.rushd.entity.PropertyFacade;
@@ -12,6 +14,17 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class PropertyResponse {
+    private com.rushd.images.ImageDescriptor primaryImage;
+    public com.rushd.images.ImageDescriptor getPrimaryImage() { return primaryImage; }
+    /** Enrich a freshly mapped response; never modifies the entity or existing response fields. */
+    public PropertyResponse withPrimaryImage(com.rushd.images.ImageDescriptor image) {
+        this.primaryImage = image;
+        return this;
+    }
+
+    private final PropertySpecificationsResponse specifications;
+
+    public PropertySpecificationsResponse getSpecifications() { return specifications; }
 
     private final Long id;
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -27,10 +40,15 @@ public class PropertyResponse {
     private final String googlePlaceId;
     private final String formattedAddress;
     private final String neighborhood;
+    @JsonSerialize(using = PlainDecimalStringSerializer.class)
     private final BigDecimal latitude;
+    @JsonSerialize(using = PlainDecimalStringSerializer.class)
     private final BigDecimal longitude;
+    @JsonSerialize(using = PlainDecimalStringSerializer.class)
     private final BigDecimal area;
+    @JsonSerialize(using = PlainDecimalStringSerializer.class)
     private final BigDecimal price;
+    @JsonSerialize(using = PlainDecimalStringSerializer.class)
     private final BigDecimal streetWidth;
     private final PropertyFacade facade;
     private final PropertyPurpose purpose;
@@ -105,6 +123,36 @@ public class PropertyResponse {
                             PropertyStatus status,
                             LocalDateTime createdAt,
                             LocalDateTime updatedAt) {
+        this(id, publisher, publisherId, publisherName, title, type, city, district, googlePlaceId, formattedAddress, neighborhood, latitude, longitude, listingType, rentalPeriod, area, price, streetWidth, facade, purpose, description, status, createdAt, updatedAt, null);
+    }
+
+    public PropertyResponse(
+            Long id,
+            PublisherSummaryResponse publisher,
+            Long publisherId,
+            String publisherName,
+            String title,
+            PropertyType type,
+            String city,
+            String district,
+            String googlePlaceId,
+            String formattedAddress,
+            String neighborhood,
+            BigDecimal latitude,
+            BigDecimal longitude,
+            ListingType listingType,
+            RentalPeriod rentalPeriod,
+            BigDecimal area,
+            BigDecimal price,
+            BigDecimal streetWidth,
+            PropertyFacade facade,
+            PropertyPurpose purpose,
+            String description,
+            PropertyStatus status,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt,
+            PropertySpecificationsResponse specifications) {
+        this.specifications = specifications == null ? PropertySpecificationsResponse.from(null) : specifications;
         this.id = id;
         this.publisher = publisher;
         this.publisherId = publisherId;

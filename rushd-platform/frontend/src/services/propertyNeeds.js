@@ -1,4 +1,6 @@
 import { propertyTypes } from './property.js'
+import { compareDecimals, decimalErrorMessage, formatDecimal, parseDecimalInput } from './decimal.js'
+import { validateAdvancedNeeds } from './advancedPropertyNeeds.js'
 
 export const needsCity = 'مكة المكرمة'
 export const requirementLabels = {
@@ -25,6 +27,9 @@ export function blankPropertyNeeds() {
     maxArea: '',
     areaRequirement: 'REQUIRED',
     searchGoal: '',
+    areaBasis: 'ADVERTISED',
+    commercialScope: '',
+    specificationCriteria: {},
   }
 }
 
@@ -35,31 +40,10 @@ export function changePropertyNeeds(values, name, value) {
 }
 
 function decimal(value, label, integerDigits, required, errors, field) {
-  const normalized = String(value ?? '')
-    .trim()
-    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
-    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
-    .replace(/٫/g, '.')
-  if (!normalized) {
-    if (required) errors[field] = `أدخل ${label}.`
-    return null
-  }
-  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
-    errors[field] = `أدخل ${label} كرقم موجب، بخانتين عشريتين كحد أقصى ودون فواصل آلاف.`
-    return null
-  }
-  const [whole, fraction = ''] = normalized.split('.')
-  const canonicalWhole = whole.replace(/^0+(?=\d)/, '')
-  if (canonicalWhole.length > integerDigits) {
-    errors[field] = `${label} لا يتجاوز ${integerDigits} خانة قبل العلامة العشرية.`
-    return null
-  }
-  const scaled = BigInt(canonicalWhole) * 100n + BigInt(fraction.padEnd(2, '0'))
-  if (scaled <= 0n) {
-    errors[field] = `${label} يجب أن يكون أكبر من صفر.`
-    return null
-  }
-  return { text: fraction ? `${canonicalWhole}.${fraction}` : canonicalWhole, scaled }
+  const rules = { integerDigits, required, scale: 2, positive: true }
+  const result = parseDecimalInput(value, rules)
+  if (result.error) errors[field] = decimalErrorMessage(result.error, label, rules)
+  return result.value
 }
 
 // Decimal strings preserve the full database precision; never round through JavaScript Number.
@@ -74,7 +58,7 @@ export function validatePropertyNeeds(values) {
   const budget = decimal(values.maxBudget, 'الحد الأعلى للميزانية', 17, true, errors, 'maxBudget')
   const minArea = decimal(values.minArea, 'أقل مساحة', 10, false, errors, 'minArea')
   const maxArea = decimal(values.maxArea, 'أكبر مساحة', 10, false, errors, 'maxArea')
-  if (minArea && maxArea && minArea.scaled > maxArea.scaled)
+  if (minArea && maxArea && compareDecimals(minArea, maxArea) > 0)
     errors.maxArea = 'أكبر مساحة يجب أن تكون مساوية لأقل مساحة أو أكبر منها.'
   const district = String(values.district ?? '').trim()
   if (district.length > 100) errors.district = 'اسم الحي لا يتجاوز 100 حرف.'
@@ -84,6 +68,8 @@ export function validatePropertyNeeds(values) {
   }
   if (values.searchGoal && !Object.hasOwn(searchGoalLabels, values.searchGoal))
     errors.searchGoal = 'اختر هدف البحث من الخيارات المتاحة.'
+  const advanced = validateAdvancedNeeds(values)
+  Object.assign(errors, advanced.errors)
   if (Object.keys(errors).length) return { errors, payload: null }
   return {
     errors,
@@ -91,19 +77,18 @@ export function validatePropertyNeeds(values) {
       listingType: values.listingType,
       rentalPeriod: values.listingType === 'RENT' ? values.rentalPeriod : null,
       type: values.type,
-      maxBudget: budget.text,
+      maxBudget: budget,
       district: district || null,
       districtRequirement: district ? values.districtRequirement : null,
-      minArea: minArea?.text ?? null,
-      maxArea: maxArea?.text ?? null,
+      minArea,
+      maxArea,
       areaRequirement: minArea || maxArea ? values.areaRequirement : null,
       searchGoal: values.searchGoal || null,
+      ...advanced.payload,
     },
   }
 }
 
 export function formatNeedsDecimal(value) {
-  // Keep every digit intact even for values above Number.MAX_SAFE_INTEGER.
-  const [whole, fraction] = String(value).split('.')
-  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, '٬')}${fraction ? `٫${fraction}` : ''}`
+  return formatDecimal(value) ?? 'غير محدد'
 }

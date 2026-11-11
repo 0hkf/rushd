@@ -94,8 +94,8 @@ class PropertyControllerTest {
                 .andExpect(jsonPath("$.googlePlaceId").value("ChIJRushdPlace123"))
                 .andExpect(jsonPath("$.formattedAddress").value("حي الياسمين، الرياض، السعودية"))
                 .andExpect(jsonPath("$.neighborhood").value("حي الياسمين"))
-                .andExpect(jsonPath("$.latitude").value(24.7136))
-                .andExpect(jsonPath("$.longitude").value(46.6753));
+                .andExpect(jsonPath("$.latitude").value("24.7136000"))
+                .andExpect(jsonPath("$.longitude").value("46.6753000"));
 
         ArgumentCaptor<Property> propertyCaptor = ArgumentCaptor.forClass(Property.class);
         verify(propertyRepository).save(propertyCaptor.capture());

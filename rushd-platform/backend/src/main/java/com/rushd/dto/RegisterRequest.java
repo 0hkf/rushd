@@ -11,17 +11,22 @@ import jakarta.validation.constraints.Size;
 public class RegisterRequest {
 
     @NotBlank(message = "الاسم مطلوب")
+    @Size(max = 255, message = "الاسم يجب ألا يتجاوز 255 حرفًا")
     private String name;
 
     @NotBlank(message = "البريد الإلكتروني مطلوب")
     @Email(message = "صيغة البريد الإلكتروني غير صحيحة")
+    @Size(max = 255, message = "البريد الإلكتروني يجب ألا يتجاوز 255 حرفًا")
+    @com.rushd.validation.FitsNormalizedEmailColumn
     private String email;
 
     @NotBlank(message = "كلمة المرور مطلوبة")
     @Size(min = 6, message = "كلمة المرور يجب أن تكون 6 أحرف على الأقل")
+    @com.rushd.validation.ValidPasswordByteLength
     private String password;
 
     @NotNull(message = "الدور مطلوب")
+    @com.fasterxml.jackson.databind.annotation.JsonDeserialize(using = com.rushd.dto.deserialization.StrictStringEnumDeserializer.class)
     private Role role;
 
     @JsonIgnore

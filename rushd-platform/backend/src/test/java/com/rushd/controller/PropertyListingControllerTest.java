@@ -23,9 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -232,7 +236,94 @@ class PropertyListingControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    private void saveProperty(String title,
+    @ParameterizedTest
+    @ValueSource(strings = {"مكة", "مكة المكرمة", "Makkah", " mAkKaH ", "مكة  المكرمة", "\u2003مكة\tالمكرمة\u00a0"})
+    void approvedMakkahCityAliasesIncludeAllStoredVariantsWithoutRewritingThem(String city) throws Exception {
+        List<String> stored = List.of("مكة", "مكة المكرمة", "Makkah", " MaKKaH ", "مكة  المكرمة", "\u2003مكة\tالمكرمة\u00a0");
+        List<Long> ids = new ArrayList<>();
+        for (String variant : stored) ids.add(saveProperty("Makkah alias", variant, "الياسمين", PropertyType.LAND,
+                "1000.00", PropertyStatus.ACTIVE, LocalDateTime.of(2026, 2, 1, 10, 0)).getId());
+        mockMvc.perform(get("/api/properties").param("city", city))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(6));
+        for (int index = 0; index < stored.size(); index++) {
+            assertEquals(stored.get(index), propertyRepository.findById(ids.get(index)).orElseThrow().getCity());
+        }
+    }
+
+    @Test
+    void nonMakkahCitiesAndDistrictsKeepTheirExistingExactComparison() throws Exception {
+        saveProperty("No internal space guessing", "Riyadh  City", "حي الياسمين", PropertyType.LAND,
+                "1000.00", PropertyStatus.ACTIVE, LocalDateTime.of(2026, 2, 1, 10, 0));
+        mockMvc.perform(get("/api/properties").param("city", "Riyadh City"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mockMvc.perform(get("/api/properties").param("city", "Riyadh  City").param("district", "الياسمين"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mockMvc.perform(get("/api/properties").param("city", "Riyadh  City").param("district", " حي الياسمين "))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"مكه", "Mecca", "مكة الجديدة"})
+    void cityFilterDoesNotGuessUnapprovedAliases(String city) throws Exception {
+        saveProperty("Makkah only", "مكة", "الياسمين", PropertyType.LAND,
+                "1000.00", PropertyStatus.ACTIVE, LocalDateTime.of(2026, 2, 1, 10, 0));
+        mockMvc.perform(get("/api/properties").param("city", city))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void catalogPriceBoundsRemainInclusiveAndExactBeyondJavascriptPrecision() throws Exception {
+        saveProperty("Exact lower", "مكة", "الياسمين", PropertyType.LAND,
+                "9007199254740993.01", PropertyStatus.ACTIVE, LocalDateTime.of(2026, 2, 1, 10, 0));
+        saveProperty("Exact higher", "Makkah", "الياسمين", PropertyType.LAND,
+                "9007199254740993.02", PropertyStatus.ACTIVE, LocalDateTime.of(2026, 2, 1, 10, 0));
+        saveProperty("Smallest price", "مكة المكرمة", "الياسمين", PropertyType.LAND,
+                "0.01", PropertyStatus.ACTIVE, LocalDateTime.of(2026, 2, 1, 10, 0));
+        saveProperty("Largest price", "مكة", "الياسمين", PropertyType.LAND,
+                "99999999999999999.99", PropertyStatus.ACTIVE, LocalDateTime.of(2026, 2, 1, 10, 0));
+        mockMvc.perform(get("/api/properties").param("city", "مكة").param("listingType", "SALE")
+                        .param("district", "الياسمين").param("type", "LAND")
+                        .param("minPrice", "9007199254740993.01").param("maxPrice", "9007199254740993.01"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].price").value("9007199254740993.01"));
+        for (String boundary : List.of("0.01", "99999999999999999.99")) {
+            mockMvc.perform(get("/api/properties").param("city", "مكة").param("minPrice", boundary).param("maxPrice", boundary))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.content[0].price").value(boundary));
+        }
+        mockMvc.perform(get("/api/properties").param("city", "مكة").param("minPrice", "0").param("maxPrice", "0"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"createdAt,asc", "createdAt,desc", "price,asc", "price,desc", "title,asc", "title,desc"})
+    void tiedSortValuesUseDescendingIdAcrossPages(String sort) throws Exception {
+        List<Long> ids = new ArrayList<>();
+        for (int index = 0; index < 5; index++) ids.add(saveProperty("Tied catalog", "مكة", "الياسمين", PropertyType.LAND,
+                "1000.00", PropertyStatus.ACTIVE, LocalDateTime.of(2026, 2, 1, 10, 0)).getId());
+        Collections.reverse(ids);
+        List<Long> actual = new ArrayList<>();
+        for (int page = 0; page < 3; page++) {
+            var response = mockMvc.perform(get("/api/properties").param("city", "مكة").param("sort", sort)
+                            .param("size", "2").param("page", String.valueOf(page)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(5)).andReturn();
+            var content = new com.fasterxml.jackson.databind.ObjectMapper().readTree(response.getResponse().getContentAsString()).get("content");
+            content.forEach(property -> actual.add(property.get("id").longValue()));
+        }
+        assertEquals(ids, actual);
+        mockMvc.perform(get("/api/properties").param("city", "مكة").param("sort", "id,asc").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(ids.get(ids.size() - 1)));
+    }
+
+    @Test
+    void outOfRangeCatalogPageKeepsFiltersAndReportsCurrentTotals() throws Exception {
+        mockMvc.perform(get("/api/properties").param("city", "Riyadh").param("page", "100").param("size", "12"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.page").value(100)).andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1)).andExpect(jsonPath("$.last").value(true));
+    }
+
+    private Property saveProperty(String title,
                               String city,
                               String district,
                               PropertyType type,
@@ -255,5 +346,6 @@ class PropertyListingControllerTest {
         property = propertyRepository.saveAndFlush(property);
         ReflectionTestUtils.setField(property, "createdAt", createdAt);
         propertyRepository.saveAndFlush(property);
+        return property;
     }
 }

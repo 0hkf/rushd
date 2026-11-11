@@ -20,7 +20,10 @@ public record PropertyNeedsResponse(
         PropertySearchGoal searchGoal,
         String city,
         String currency,
-        String areaUnit) {
+        String areaUnit,
+        PropertyNeedsAreaBasis areaBasis,
+        com.rushd.entity.CommercialScope commercialScope,
+        PropertySpecificationCriteria specificationCriteria) {
 
     public static PropertyNeedsResponse from(PropertyNeedsRequest request) {
         boolean hasArea = request.getMinArea() != null || request.getMaxArea() != null;
@@ -31,7 +34,8 @@ public record PropertyNeedsResponse(
                         request.getDistrictRequirement(), PropertyNeedsRequirement.PREFERRED),
                 decimal(request.getMinArea()), decimal(request.getMaxArea()),
                 hasArea ? defaultRequirement(request.getAreaRequirement(), PropertyNeedsRequirement.REQUIRED) : null,
-                request.getSearchGoal(), "مكة المكرمة", "SAR", "SQUARE_METRE");
+                request.getSearchGoal(), "مكة المكرمة", "SAR", "SQUARE_METRE",
+                request.getAreaBasis(), request.getCommercialScope(), request.getSpecificationCriteria());
     }
 
     private static PropertyNeedsRequirement defaultRequirement(

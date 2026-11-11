@@ -1,3 +1,5 @@
+import { formatDecimal } from './decimal.js'
+
 export const propertyTypes = {
   LAND: 'أرض',
   VILLA: 'فيلا',
@@ -28,8 +30,7 @@ export const facadeLabels = {
   SOUTHWEST: 'جنوبية غربية',
   MULTIPLE: 'متعددة',
 }
-export const money = (value) =>
-  new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 2 }).format(value)
+export const money = (value) => formatDecimal(value) ?? 'غير محدد'
 export const priceSuffix = (property) =>
   property.listingType === 'RENT'
     ? property.rentalPeriod === 'MONTHLY'
@@ -38,6 +39,14 @@ export const priceSuffix = (property) =>
     : 'ر.س'
 export function errorMessage(error) {
   const message = error.response?.data?.message
+  const known = {
+    'An unexpected error occurred': 'تعذّر إكمال الطلب من الخادم. أعد المحاولة، وإن استمرت المشكلة تواصل مع الإدارة.',
+    'Invalid email or password': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+    'Authentication is required': 'سجّل الدخول للمتابعة.',
+    'Insufficient permission': 'لا يملك حسابك صلاحية تنفيذ هذا الإجراء.',
+    'Invalid CSRF token': 'تعذّر التحقق من الجلسة. أعد المحاولة أو سجّل الدخول مجددًا.',
+  }
+  if (typeof message === 'string' && Object.hasOwn(known, message)) return known[message]
   if (typeof message === 'string') return message
   if (message && typeof message === 'object') return Object.values(message).join('، ')
   return 'تعذّر الاتصال بالخدمة. حاول مرة أخرى.'

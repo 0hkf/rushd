@@ -1,6 +1,7 @@
 package com.rushd.security;
 
 import com.rushd.config.AuthRateLimitProperties;
+import com.rushd.config.RegistrationRateLimitProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.*;
@@ -12,7 +13,9 @@ class AuthRateLimitFilterTest {
     @Test void highRiskEndpointsReturn429WithoutTrustingForwardedAddresses() throws Exception {
         var policy = new AuthRateLimitProperties(2, 3, Duration.ofMinutes(1), 10);
         var limiter = new AuthRateLimiter(policy, Clock.fixed(Instant.EPOCH, ZoneOffset.UTC));
-        var filter = new AuthRateLimitFilter(limiter, new SecurityErrorWriter(new ObjectMapper()), policy);
+        var registrationPolicy = new RegistrationRateLimitProperties(5, Duration.ofMinutes(1), 10);
+        var filter = new AuthRateLimitFilter(limiter, new SecurityErrorWriter(new ObjectMapper()), policy,
+                new RegistrationRateLimiter(registrationPolicy, Clock.fixed(Instant.EPOCH, ZoneOffset.UTC)), registrationPolicy);
         AtomicInteger passed = new AtomicInteger();
         for (int attempt = 0; attempt < 3; attempt++) {
             var request = new MockHttpServletRequest("POST", "/api/auth/login");

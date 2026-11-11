@@ -6,6 +6,8 @@
   margin: 16px auto;
 }
 .login-intro {
+  grid-column: 1;
+  grid-row: 1;
   position: relative;
   overflow: hidden;
   padding: 48px;
@@ -23,7 +25,7 @@
   height: 84px;
   margin-block: 28px;
 }
-.login-intro h1 {
+.login-intro h2 {
   font-size: clamp(2.8rem, 5vw, 4rem);
   font-weight: 900;
   line-height: 1.2;
@@ -37,6 +39,8 @@
   margin-top: auto;
 }
 .login-form-panel {
+  grid-column: 2;
+  grid-row: 1;
   padding: 48px;
   display: flex;
   flex-direction: column;
@@ -47,7 +51,7 @@
   background: var(--color-beige-deep);
   margin-bottom: 24px;
 }
-.login-form-panel h2 {
+.login-form-panel h1 {
   font-size: 2rem;
   font-weight: 800;
 }
@@ -56,18 +60,20 @@
   margin-block: 10px 30px;
 }
 .form-field {
-  margin-bottom: 22px;
+  margin-bottom: 20px;
+  min-width: 0;
 }
 .form-field label {
   display: block;
   font-weight: 700;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  line-height: 1.6;
 }
 .form-field input {
   width: 100%;
   min-height: 50px;
   padding: 12px 16px;
-  border: 1px solid var(--color-beige-deep);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-small);
   background: #f7efdf;
   color: var(--color-ink);
@@ -107,12 +113,15 @@
 }
 .property-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 22px;
 }
 .property-card {
   padding: 0;
   overflow: hidden;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .property-cover {
   position: relative;
@@ -153,7 +162,12 @@
 }
 .property-body {
   padding: 26px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  container-type: inline-size;
 }
+.property-body .property-actions { margin-top: auto; }
 .property-city {
   display: flex;
   align-items: center;
@@ -168,9 +182,12 @@
 .property-body h3 {
   font-size: 1.3rem;
   margin-top: 10px;
+  line-height: 1.5;
+  min-height: 3em;
 }
 .property-price {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
   margin-top: 22px;
@@ -180,6 +197,13 @@
   font-size: 1.8rem;
   font-weight: 800;
 }
+.property-price strong.long-decimal {
+  font-size: 1rem;
+  white-space: nowrap;
+}
+.property-price strong.medium-decimal { font-size: 1.25rem; white-space: nowrap; }
+.property-card { transition: border-color 160ms, box-shadow 160ms; }
+@media (hover: hover) { .property-card:hover { border-color: var(--color-control-border); box-shadow: 0 6px 20px rgb(40 27 29 / 7%); } }
 .property-price span {
   font-size: 0.8rem;
   color: var(--color-muted);
@@ -272,6 +296,8 @@
     grid-template-columns: 1fr;
   }
   .login-intro {
+    grid-column: 1;
+    grid-row: 2;
     min-height: 360px;
   }
   .login-mark {
@@ -279,11 +305,13 @@
     height: 56px;
     margin-block: 20px;
   }
-  .login-intro h1 {
+  .login-intro h2 {
     font-size: 2.5rem;
   }
   .login-form-panel {
-    padding: 28px;
+    grid-column: 1;
+    grid-row: 1;
+    padding: 24px;
   }
   .stat-card {
     display: grid;

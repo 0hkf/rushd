@@ -1,6 +1,9 @@
 package com.rushd.dto;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
+import com.rushd.entity.CommercialScope;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.rushd.dto.deserialization.StrictStringEnumDeserializer;
 import com.rushd.entity.ListingType;
@@ -63,6 +66,33 @@ public class PropertyNeedsRequest {
     private PropertyNeedsRequirement areaRequirement;
     @JsonDeserialize(using = StrictStringEnumDeserializer.class)
     private PropertySearchGoal searchGoal;
+
+    @JsonDeserialize(using = StrictStringEnumDeserializer.class)
+    private PropertyNeedsAreaBasis areaBasis;
+    @JsonDeserialize(using = StrictStringEnumDeserializer.class)
+    private CommercialScope commercialScope;
+    private PropertySpecificationCriteria specificationCriteria = PropertySpecificationCriteria.EMPTY;
+    private boolean areaBasisSeen, commercialScopeSeen, criteriaSeen;
+
+    public PropertyNeedsAreaBasis getAreaBasis() { return areaBasis == null ? PropertyNeedsAreaBasis.ADVERTISED : areaBasis; }
+    public void setAreaBasis(PropertyNeedsAreaBasis areaBasis) {
+        if (areaBasisSeen) throw new IllegalArgumentException("Duplicate areaBasis");
+        areaBasisSeen = true; this.areaBasis = areaBasis;
+    }
+    public CommercialScope getCommercialScope() { return commercialScope; }
+    public void setCommercialScope(CommercialScope commercialScope) {
+        if (commercialScopeSeen) throw new IllegalArgumentException("Duplicate commercialScope");
+        commercialScopeSeen = true; this.commercialScope = commercialScope;
+    }
+    public PropertySpecificationCriteria getSpecificationCriteria() { return specificationCriteria; }
+    @JsonSetter(nulls = Nulls.FAIL)
+    public void setSpecificationCriteria(PropertySpecificationCriteria criteria) {
+        if (criteriaSeen) throw new IllegalArgumentException("Duplicate specificationCriteria");
+        criteriaSeen = true; this.specificationCriteria = java.util.Objects.requireNonNull(criteria);
+    }
+    public boolean usesAdvancedMatching() {
+        return getAreaBasis() != PropertyNeedsAreaBasis.ADVERTISED || commercialScope != null || !specificationCriteria.values().isEmpty();
+    }
 
     /** Reject unsupported criteria only for this DTO, without changing legacy JSON handling. */
     @JsonAnySetter

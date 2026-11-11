@@ -10,6 +10,8 @@ import com.rushd.exception.EmailAlreadyExistsException;
 import com.rushd.exception.InvalidCredentialsException;
 import com.rushd.exception.UserNotFoundException;
 import com.rushd.repository.UserRepository;
+import com.rushd.security.PasswordInputPolicy;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -47,10 +49,23 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
 
-        return UserResponse.from(userRepository.save(user));
+        try {
+            // Flush within the repository transaction so a concurrent unique-key
+            // failure is observed here, not after a successful HTTP response.
+            return UserResponse.from(userRepository.saveAndFlush(user));
+        } catch (DataIntegrityViolationException failure) {
+            if (RegistrationEmailConflict.isEmailConflict(failure)) {
+                throw new EmailAlreadyExistsException(normalizedEmail);
+            }
+            throw failure;
+        }
     }
 
     public User authenticate(LoginRequest request) {
+        // Never try a truncated prefix, including for hashes created by older versions.
+        if (!PasswordInputPolicy.isSupportedLength(request.getPassword())) {
+            throw new InvalidCredentialsException();
+        }
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
         try {
             authenticationManager.authenticate(

@@ -2,6 +2,7 @@ package com.rushd.mapper;
 
 import com.rushd.dto.CreatePropertyRequest;
 import com.rushd.dto.PropertyResponse;
+import com.rushd.dto.PropertySpecificationsResponse;
 import com.rushd.dto.PublisherSummaryResponse;
 import com.rushd.dto.UpdatePropertyRequest;
 import com.rushd.entity.Property;
@@ -105,7 +106,8 @@ public final class PropertyMapper {
                 property.getDescription(),
                 property.getStatus(),
                 property.getCreatedAt(),
-                property.getUpdatedAt()
+                property.getUpdatedAt(),
+                PropertySpecificationsResponse.from(property.getSpecifications())
         );
     }
 

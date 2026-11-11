@@ -18,6 +18,61 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedMethod(
+            org.springframework.web.HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        return ResponseEntity.status(ex.getStatusCode()).headers(ex.getHeaders()).body(
+                new ErrorResponse(405, "Method Not Allowed", "Request method is not supported", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(
+            org.springframework.web.HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+        return ResponseEntity.status(ex.getStatusCode()).headers(ex.getHeaders()).body(
+                new ErrorResponse(415, "Unsupported Media Type", "Content type is not supported", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(com.rushd.favorites.FavoriteFailure.class)
+    public ResponseEntity<ErrorResponse> handleFavoriteFailure(com.rushd.favorites.FavoriteFailure ex, HttpServletRequest request) {
+        return ResponseEntity.status(ex.status()).cacheControl(org.springframework.http.CacheControl.noStore()).body(
+                new ErrorResponse(ex.status(), HttpStatus.valueOf(ex.status()).getReasonPhrase(), ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(com.rushd.images.ImageFailure.class)
+    public ResponseEntity<ErrorResponse> handleImageFailure(com.rushd.images.ImageFailure ex, HttpServletRequest request) {
+        return ResponseEntity.status(ex.status()).body(new ErrorResponse(ex.status(),
+                HttpStatus.valueOf(ex.status()).getReasonPhrase(), ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleImageSize(Exception ex, HttpServletRequest request) {
+        return ResponseEntity.status(413).body(new ErrorResponse(413, "Payload Too Large",
+                "Image or multipart request exceeds the size limit", request.getRequestURI()));
+    }
+
+    @ExceptionHandler({org.springframework.web.multipart.MultipartException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.web.multipart.support.MissingServletRequestPartException.class})
+    public ResponseEntity<ErrorResponse> handleMalformedMultipart(Exception ex, HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(new ErrorResponse(400, "Bad Request",
+                "Invalid multipart request", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvalidPropertySpecificationsException.class)
+    public ResponseEntity<ErrorResponse> handlePropertySpecifications(
+            InvalidPropertySpecificationsException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponse(400, "Bad Request", ex.getErrors(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(PropertyMatchingTooBroadException.class)
+    public ResponseEntity<ErrorResponse> handleMatchingTooBroad(
+            PropertyMatchingTooBroadException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+                new ErrorResponse(422, "Unprocessable Entity", ex.getMessage(), request.getRequestURI()));
+    }
 
     @ExceptionHandler(InvalidRefreshTokenException.class)
     public ResponseEntity<ErrorResponse> handleRefresh(InvalidRefreshTokenException ex, HttpServletRequest request) {
@@ -175,7 +230,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(
             Exception ex, HttpServletRequest request) {
-
+        // Do not log exception messages/causes, request bodies, headers, query
+        // strings or credentials. Even SQL exception text can contain user data.
+        LOG.error("Unhandled server exception: type={}, method={}", ex.getClass().getName(), request.getMethod());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 new ErrorResponse(500, "Internal Server Error",
                         "An unexpected error occurred", request.getRequestURI()));

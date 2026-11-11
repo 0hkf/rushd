@@ -1,0 +1,13 @@
+.favorite-control { margin-block: 12px; min-width: 0; }
+.favorite-button { min-height: 44px; gap: 8px; white-space: normal; }
+.favorite-button[aria-pressed=true] .icon { fill: currentColor; }
+.favorite-error { color: var(--color-red); font-size: .85rem; overflow-wrap: anywhere; margin-top: 8px; }
+.favorite-error .button { min-height: 44px; padding: 8px 12px; }
+.favorites-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; margin-block: 24px; }
+.favorite-card { min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 12px; }
+.favorite-card > .property-image { height: 180px; border-radius: 12px; }
+.favorite-card h2 { font-size: 1.3rem; }
+.favorite-card > .badge { align-self: flex-start; }
+.favorite-card > .property-actions { margin-top: auto; padding-top: 12px; }
+@media (max-width: 1000px) { .favorites-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 680px) { .favorites-grid { grid-template-columns: minmax(0,1fr); } }

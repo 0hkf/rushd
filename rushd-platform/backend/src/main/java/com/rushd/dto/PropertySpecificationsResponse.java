@@ -1,0 +1,88 @@
+package com.rushd.dto;
+
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.rushd.dto.serialization.PlainDecimalStringSerializer;
+import com.rushd.entity.*;
+import java.math.BigDecimal;
+
+/** Stable response shape: unknown and inapplicable facts remain explicit nulls. */
+public record PropertySpecificationsResponse(
+        PropertyAreaSource primaryAreaSource,
+        @JsonSerialize(using = PlainDecimalStringSerializer.class) BigDecimal landArea,
+        @JsonSerialize(using = PlainDecimalStringSerializer.class) BigDecimal unitNetArea,
+        @JsonSerialize(using = PlainDecimalStringSerializer.class) BigDecimal unitGrossArea,
+        @JsonSerialize(using = PlainDecimalStringSerializer.class) BigDecimal totalBuiltArea,
+        Integer bedrooms,
+        Integer bathrooms,
+        Integer livingRooms,
+        Integer floorNumber,
+        Integer floorCount,
+        Integer totalUnits,
+        Integer residentialUnits,
+        Integer commercialUnits,
+        Integer parkingSpaces,
+        Integer estimatedAgeYears,
+        Integer ageAsOfYear,
+        PropertyCondition condition,
+        PropertyFinishing finishing,
+        PropertyFurnishing furnishing,
+        Boolean hasElevator,
+        Boolean hasAirConditioning,
+        Boolean hasFittedKitchen,
+        Boolean hasMaidRoom,
+        Boolean hasDriverRoom,
+        Boolean hasPool,
+        Boolean hasYard,
+        Boolean hasBalcony,
+        Boolean hasPrivateRoof,
+        Boolean electricityConnected,
+        Boolean waterConnected,
+        Boolean sewerConnected,
+        Boolean hasIrrigation,
+        Integer wellCount,
+        PropertyWaterSource waterSource,
+        CommercialScope commercialScope,
+        CommercialSubtype commercialSubtype,
+        String otherTypeDescription) {
+    public static PropertySpecificationsResponse from(PropertySpecifications specifications) {
+        PropertySpecifications value = specifications == null ? new PropertySpecifications() : specifications;
+        return new PropertySpecificationsResponse(
+                value.getPrimaryAreaSource(),
+                value.getLandArea(),
+                value.getUnitNetArea(),
+                value.getUnitGrossArea(),
+                value.getTotalBuiltArea(),
+                value.getBedrooms(),
+                value.getBathrooms(),
+                value.getLivingRooms(),
+                value.getFloorNumber(),
+                value.getFloorCount(),
+                value.getTotalUnits(),
+                value.getResidentialUnits(),
+                value.getCommercialUnits(),
+                value.getParkingSpaces(),
+                value.getEstimatedAgeYears(),
+                value.getAgeAsOfYear(),
+                value.getCondition(),
+                value.getFinishing(),
+                value.getFurnishing(),
+                value.getHasElevator(),
+                value.getHasAirConditioning(),
+                value.getHasFittedKitchen(),
+                value.getHasMaidRoom(),
+                value.getHasDriverRoom(),
+                value.getHasPool(),
+                value.getHasYard(),
+                value.getHasBalcony(),
+                value.getHasPrivateRoof(),
+                value.getElectricityConnected(),
+                value.getWaterConnected(),
+                value.getSewerConnected(),
+                value.getHasIrrigation(),
+                value.getWellCount(),
+                value.getWaterSource(),
+                value.getCommercialScope(),
+                value.getCommercialSubtype(),
+                value.getOtherTypeDescription());
+    }
+}

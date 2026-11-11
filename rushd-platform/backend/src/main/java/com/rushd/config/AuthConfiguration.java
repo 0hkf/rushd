@@ -10,7 +10,8 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Clock;
 
 @Configuration
-@EnableConfigurationProperties({JwtProperties.class, AuthProperties.class, AuthRateLimitProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, AuthProperties.class, AuthRateLimitProperties.class,
+        RegistrationRateLimitProperties.class})
 public class AuthConfiguration {
     @Bean
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {

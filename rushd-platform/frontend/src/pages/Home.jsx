@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
+import { money } from '../services/property'
+import { apiHealthStatusText } from '../services/apiHealthStatus'
 import Icon from '../components/Icon'
 import { BrandMark } from '../components/Brand'
 import './Home.css'
@@ -8,13 +10,13 @@ import './Home.css'
 const features = [
   {
     icon: 'chart',
-    title: 'السعر في سياقه',
-    text: 'سعر المتر ومقارنة متوسط السوق؛ نقطة البداية لفهم قيمة العقار.',
+    title: 'سعر واضح بوحدته',
+    text: 'سعر البيع أو الإيجار الشهري والسنوي كما سُجل، دون تحويل أو حكم على سعر السوق.',
   },
   {
     icon: 'shield',
-    title: 'تقييم روافد',
-    text: 'تصور أوضح لنقاط القوة والمخاطر، لتعرف الأسئلة التي تستحق أن تسألها.',
+    title: 'قارن باحتياجاتك',
+    text: 'حدد شروطك وتفضيلاتك، واعرف أين يحقق العقار متطلباتك وأين تنقص المعلومات.',
     tone: 'beige',
   },
   {
@@ -75,7 +77,7 @@ function Home() {
               <br />
               <span>قرار بثقة.</span>
             </h1>
-            <p>روافد العقارية تجمع عروض البيع والإيجار ومواصفاتها، بإدارة مباشرة من الأدمن.</p>
+            <p>عروض البيع والإيجار في مكة، ومواصفات واضحة تساعدك تقارن وتختار، بإدارة مباشرة من المنصة.</p>
             <div className="hero-actions">
               <Link to="/properties" className="button button-red">
                 استكشف العقارات <Icon name="arrow" />
@@ -144,23 +146,23 @@ function Home() {
               </span>
               <span className="badge">مثال توضيحي</span>
             </div>
-            <h3>أرض سكنية في الرياض</h3>
+              <h3>أرض سكنية في مكة</h3>
             <p className="preview-location">
               <Icon name="pin" />
               حي الياسمين
             </p>
             <div className="preview-price">
-              <strong>1,250,000</strong>
+              <strong><bdi dir="ltr">{money('1250000.00')}</bdi></strong>
               <span>ريال سعودي</span>
             </div>
             <dl className="preview-details">
               <div>
                 <dt>المساحة</dt>
-                <dd>450 م²</dd>
+                <dd><bdi dir="ltr">{money('450.00')}</bdi> م²</dd>
               </div>
               <div>
-                <dt>سعر المتر تقريبًا</dt>
-                <dd>2,778 ريال</dd>
+                <dt>نوع العرض</dt>
+                <dd>للبيع</dd>
               </div>
             </dl>
             <div className="preview-bottom">
@@ -197,7 +199,7 @@ function Home() {
             <br />
             إلى الخطوة التالية.
           </h2>
-          <p>هذه ملامح المنتج المستهدف؛ أدوات التحليل والمقارنة والمفضلة ضمن خطة التطوير.</p>
+          <p>قارن عقارين أو ثلاثة من العروض العامة. المفضلة متاحة للحسابات المسجلة عند تفعيل خدمتها؛ أدوات التحليل ضمن خطة التطوير.</p>
         </div>
         <div className="feature-grid">
           {features.map(({ icon, title, text, tone }) => (
@@ -228,11 +230,7 @@ function Home() {
       </p>
       <div className={`service-status service-status-${apiStatus}`} role="status">
         <span className="status-dot" />
-        {apiStatus === 'loading'
-          ? 'جارٍ التحقق من اتصال الخدمة'
-          : apiStatus === 'ok'
-            ? 'الخدمة متصلة'
-            : 'الخدمة غير متاحة حاليًا'}
+        {apiHealthStatusText(apiStatus)}
       </div>
     </div>
   )

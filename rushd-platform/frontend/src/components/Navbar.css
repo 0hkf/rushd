@@ -1,12 +1,16 @@
 .site-header {
   border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--color-bg);
 }
 .navbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 32px;
-  min-height: 98px;
+  gap: 24px;
+  min-height: 88px;
 }
 .brand-link {
   flex-shrink: 0;
@@ -21,7 +25,7 @@
 .navbar-links {
   display: flex;
   list-style: none;
-  gap: 32px;
+  gap: 22px;
   padding: 0;
   margin: 0 auto;
 }
@@ -42,6 +46,7 @@
 }
 .nav-login {
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 .menu-toggle {
   display: none;
@@ -54,7 +59,12 @@
   align-items: center;
   justify-content: center;
 }
-@media (max-width: 820px) {
+/* Keep the additional comparison link within the existing tablet navigation. */
+@media (min-width: 1121px) and (max-width: 1280px) {
+  .navbar-links { gap: 14px; }
+  .navbar { gap: 18px; }
+}
+@media (max-width: 1120px) {
   .navbar {
     flex-wrap: wrap;
     gap: 0;
@@ -73,6 +83,9 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .navbar-links {
     width: 100%;

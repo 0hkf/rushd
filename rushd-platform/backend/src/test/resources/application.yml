@@ -2,7 +2,8 @@ spring:
   config:
     import: classpath:auth-policy.yml
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    # Match PostgreSQL regexp_replace flags; this does not replace the real-PG gate.
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -25,3 +26,5 @@ security:
     rate-limit:
       login-requests: 1000
       refresh-requests: 1000
+    registration-rate-limit:
+      requests: 1000

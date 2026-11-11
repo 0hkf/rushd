@@ -145,3 +145,23 @@ test('logout waits for in-flight rotation and sends server logout with fresh CSR
   assert.equal(sequence.filter((url) => url === '/api/auth/refresh').length, 1)
   assert.equal(sequence.filter((url) => url === '/api/auth/csrf').length, 2)
 })
+
+test('multipart retains File/FormData and the same token through cookie refresh with CSRF', async () => {
+  const { default: api, markAuthenticated } = await client()
+  const { createImagesApi, imagePath } = await import('./propertyImages.js')
+  markAuthenticated()
+  const id='11111111-1111-4111-8111-111111111111', tokens=[]
+  api.defaults.adapter=async(config)=>{
+    if(config.url==='/api/auth/csrf')return response(config,{token:'masked-csrf'})
+    if(config.url==='/api/auth/refresh')return response(config)
+    assert.ok(config.data instanceof FormData)
+    assert.notEqual(config.headers['Content-Type'],'application/json')
+    assert.equal(config.headers['X-XSRF-TOKEN'],'masked-csrf');assert.equal(config.withCredentials,true)
+    tokens.push(config.data.get('uploadToken'))
+    if(!config._retried)return denied(config)
+    return response(config,{revision:'1',primaryImageId:id,images:[{id,order:0,altText:null,
+      thumbnail:{url:imagePath(15,id,'thumbnail'),width:640,height:480},display:{url:imagePath(15,id,'display'),width:640,height:480}}]})
+  }
+  await createImagesApi(api,15).upload({file:new File(['source'],'a.jpg',{type:'image/jpeg'}),token:id,rightsBasis:'OWNED',altText:null,sourceReference:null})
+  assert.deepEqual(tokens,[id,id])
+})

@@ -17,6 +17,7 @@ import com.rushd.mapper.PropertyMapper;
 import com.rushd.repository.PropertyRepository;
 import com.rushd.repository.UserRepository;
 import com.rushd.repository.specification.PropertySpecification;
+import com.rushd.validation.PropertySpecificationsRules;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -31,11 +32,13 @@ public class PropertyService {
 
     private final PropertyRepository propertyRepository;
     private final UserRepository userRepository;
+    private final com.rushd.images.PrimaryImageLookup propertyImages;
 
     public PropertyService(PropertyRepository propertyRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository, com.rushd.images.PrimaryImageLookup propertyImages) {
         this.propertyRepository = propertyRepository;
         this.userRepository = userRepository;
+        this.propertyImages = propertyImages;
     }
 
     @Transactional
@@ -49,9 +52,12 @@ public class PropertyService {
 
         Property property = new Property();
         property.setPublisher(publisher);
+        var specifications = PropertySpecificationsRules.mergeAndValidate(
+                request.getType(), request.getArea(), null, request.getSpecifications());
         PropertyMapper.applyCreateRequest(property, request);
+        property.setSpecifications(specifications);
 
-        return PropertyMapper.toResponse(propertyRepository.save(property));
+        return withPrimary(PropertyMapper.toResponse(propertyRepository.save(property)));
     }
 
     @Transactional
@@ -59,15 +65,18 @@ public class PropertyService {
                                            UpdatePropertyRequest request,
                                            String authenticatedEmail) {
         User authenticatedUser = findAuthenticatedUser(authenticatedEmail);
-        Property property = propertyRepository.findById(id)
+        Property property = propertyRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new PropertyNotFoundException(id));
 
         if (authenticatedUser.getRole() != Role.ADMIN) {
             throw new AccessDeniedException("Only admins can update properties");
         }
 
+        var specifications = PropertySpecificationsRules.mergeAndValidate(
+                request.getType(), request.getArea(), property.getSpecifications(), request.getSpecifications());
         PropertyMapper.applyUpdateRequest(property, request);
-        return PropertyMapper.toResponse(propertyRepository.save(property));
+        property.setSpecifications(specifications);
+        return withPrimary(PropertyMapper.toResponse(propertyRepository.save(property)));
     }
 
     @Transactional(readOnly = true)
@@ -82,11 +91,12 @@ public class PropertyService {
             Pageable pageable) {
         validatePriceRange(minPrice, maxPrice);
 
-        return propertyRepository.findAll(
+        var result = propertyRepository.findAll(
                         PropertySpecification.activeProperties(
                                 city, district, type, listingType, rentalPeriod, minPrice, maxPrice),
                         pageable)
                 .map(PropertyMapper::toResponse);
+        return withPrimaries(result);
     }
 
     @Transactional(readOnly = true)
@@ -98,12 +108,20 @@ public class PropertyService {
             throw new PropertyNotFoundException(id);
         }
 
-        return PropertyMapper.toDetailsResponse(property);
+        return withPrimary(PropertyMapper.toDetailsResponse(property));
     }
 
     @Transactional(readOnly = true)
     public Page<PropertyResponse> listManagedProperties(Pageable pageable) {
-        return propertyRepository.findAll(pageable).map(PropertyMapper::toResponse);
+        return withPrimaries(propertyRepository.findAll(pageable).map(PropertyMapper::toResponse));
+    }
+
+    private PropertyResponse withPrimary(PropertyResponse response) {
+        return response.withPrimaryImage(propertyImages.primaries(java.util.List.of(response.getId())).get(response.getId()));
+    }
+    private Page<PropertyResponse> withPrimaries(Page<PropertyResponse> page) {
+        var primary = propertyImages.primaries(page.getContent().stream().map(PropertyResponse::getId).toList());
+        return page.map(response -> response.withPrimaryImage(primary.get(response.getId())));
     }
 
     private boolean isPubliclyVisible(Property property) {

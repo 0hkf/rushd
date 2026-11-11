@@ -117,8 +117,8 @@ class PropertyUpdateControllerTest {
                 .andExpect(jsonPath("$.googlePlaceId").value("ChIJUpdatedPlace456"))
                 .andExpect(jsonPath("$.formattedAddress").value("زهرة العمرة، مكة، السعودية"))
                 .andExpect(jsonPath("$.neighborhood").value("زهرة العمرة"))
-                .andExpect(jsonPath("$.latitude").value(21.5101))
-                .andExpect(jsonPath("$.longitude").value(39.9962));
+                .andExpect(jsonPath("$.latitude").value("21.5101000"))
+                .andExpect(jsonPath("$.longitude").value("39.9962000"));
 
         Property updated = propertyRepository.findById(property.getId()).orElseThrow();
         assertEquals("ChIJUpdatedPlace456", updated.getGooglePlaceId());

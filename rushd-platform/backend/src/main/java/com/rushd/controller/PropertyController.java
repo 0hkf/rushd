@@ -115,6 +115,8 @@ public class PropertyController {
                             "Sort direction must be asc or desc"));
         }
 
-        return PageRequest.of(page, size, Sort.by(direction, sortField));
+        Sort ordering = Sort.by(direction, sortField);
+        if (!sortField.equals("id")) ordering = ordering.and(Sort.by(Sort.Direction.DESC, "id"));
+        return PageRequest.of(page, size, ordering);
     }
 }

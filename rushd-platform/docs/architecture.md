@@ -50,6 +50,8 @@ PostgreSQL (localhost:5432)
 | العقارات | `/properties` |
 | لوحة التحكم | `/dashboard` |
 | مواصفات العقار | `/properties/:id` |
+| الاحتياجات والمطابقة للمسجلين | `/property-needs` |
+| المقارنة العامة المؤقتة لعقارين أو ثلاثة | `/compare` |
 
 ---
 
@@ -67,19 +69,29 @@ PostgreSQL (localhost:5432)
 | `POST` | `/api/auth/register` | تسجيل مستخدم |
 | `POST` | `/api/auth/login` | الدخول وإصدار HttpOnly cookies |
 | `GET` | `/api/auth/me` | المستخدم الحالي |
+| `POST` | `/api/property-needs/validate` | تحقق احتياجات مسجل وملخص دون بحث أو حفظ |
+| `POST` | `/api/property-needs/matches` | مطابقة ACTIVE بشروط وتفضيلات وترتيب وصفحات للمسجلين |
 | `GET` | `/api/properties` | قائمة عامة مع مرشحات البيع والإيجار |
 | `GET` | `/api/admin/properties` | قائمة جميع حالات النشر للأدمن فقط |
 | `GET` | `/api/properties/{id}` | تفاصيل العقار |
 | `POST` | `/api/properties` | إنشاء عرض بيع/إيجار بواسطة ADMIN فقط |
 | `PUT` | `/api/properties/{id}` | تعديل بواسطة ADMIN فقط |
+| `GET` | `/api/me/favorites` | صفحة مفضلة الحساب الحالي فقط، مع خانة آمنة للعقار المخفي |
+| `GET` | `/api/me/favorites/status` | حالة دفعة محدودة من معرفات بطاقات الحساب الحالي |
+| `PUT` | `/api/me/favorites/{propertyId}` | حفظ idempotent للمسجل مع CSRF |
+| `DELETE` | `/api/me/favorites/{propertyId}` | إزالة idempotent لعلاقة الحساب الحالي مع CSRF |
 
 ### النموذج والأمان
 
-الإدخال يدوي بواسطة الأدمن. التسجيل العام BUYER فقط. تبقى SELLER قيمة تراثية دون صلاحية نشر. السعر للإيجار مرتبط بفترة MONTHLY أو YEARLY. لا اتصالات Google أو خرائط أو صور ضمن هذا النطاق.
+الإدخال يدوي بواسطة الأدمن. التسجيل العام BUYER فقط. تبقى SELLER قيمة تراثية دون صلاحية نشر. السعر للإيجار مرتبط بفترة MONTHLY أو YEARLY. لا اتصالات Google أو خرائط. الصور في [عقد P10](api-property-images.md)، والمفضلة في [عقد P13](api-favorites.md)؛ الميزتان معطلتان افتراضيًا حتى تفعيل معتمد منفصل، ولا SQL تلقائي على قاعدة المشروع.
 
 تفاصيل الحقول وترقية PostgreSQL في [api-properties.md](api-properties.md). إعداد ddl-auto هو none؛ يجب تطبيق الترقية المعتمدة قبل تشغيل التطبيق على قاعدة قديمة.
 
+المطابقة تستخدم خدمة واستعلامًا منفصلين عن التصفح القديم، مع المصادقة وCSRF والتحقق قبل الاستعلام. تحمل مجموعة أولية محدودة، ثم تقارن أسماء الموقع في الذاكرة وترتب المجموعة كاملة قبل صفحات النتائج؛ تجاوز الحد يعيد 422 دون عينة. سعر ومساحة عقد المطابقة سلاسل دقيقة، ولا بيانات ناشر أو AI أو حفظ احتياجات. التفاصيل في [api-property-matching.md](api-property-matching.md).
+
 ### إعداد CORS
+
+المقارنة P15 واجهة فوق GET التفاصيل القائم، دون API/schema جديدين. تحفظ معرفات مؤقتة فقط في الذاكرة وتعيد التحقق من ACTIVE/SOLD، وتعرض المساحات وفترات السعر الأصلية دون تحويل أو score. تفاصيل الإلغاء والخصوصية وحدود حداثة البيانات في [تحقق P15](p15-property-comparison-verification.md).
 
 السماح للـ Frontend بالاتصال بالـ Backend مُعرَّف في:
 `backend/src/main/java/com/rushd/config/SecurityConfig.java`

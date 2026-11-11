@@ -54,7 +54,9 @@ class TokenLifecycleTest {
     private User user;
 
     @BeforeEach void setup() {
-        tokens.deleteAll(); sessions.deleteAll();
+        // One statement removes both ends of rotated-token chains. Entity-by-entity
+        // UUID deletion has no dependency order and violates PostgreSQL's self-FK.
+        tokens.deleteAllInBatch(); sessions.deleteAll();
         users.findByEmail("lifecycle@example.com").ifPresent(users::delete);
         clock.now = Instant.parse("2026-10-06T00:00:00Z");
         user = new User(); user.setEmail("lifecycle@example.com"); user.setName("Lifecycle");

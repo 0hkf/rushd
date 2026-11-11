@@ -67,6 +67,9 @@ public class Property {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal area;
 
+    @Embedded
+    private PropertySpecifications specifications;
+
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal price;
 
@@ -220,6 +223,10 @@ public class Property {
     public void setArea(BigDecimal area) {
         this.area = area;
     }
+
+    public PropertySpecifications getSpecifications() { return specifications; }
+
+    public void setSpecifications(PropertySpecifications specifications) { this.specifications = specifications; }
 
     public BigDecimal getPrice() {
         return price;
